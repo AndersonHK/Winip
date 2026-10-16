@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Src\AppPaths.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\framework.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\targetver.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\Resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\Winip.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\AppPaths.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\Winip.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="$(WinipVersionResource)">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+    <ResourceCompile Include="Src\Winip.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+    <ResourceCompile Include="$(WinipVersionResource)" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="Src\small.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="Src\Winip.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Src\NotebookInput.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="Src\NotebookOutput.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="Src\Notebook.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\Renderer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\RenderPolicy.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\RasterContract.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\FontSet.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClCompile Include="Src\NotebookInput.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="Src\NotebookOutput.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="Src\Notebook.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\Renderer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\FontSet.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Src\TitleEditor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\PythonDiscovery.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\Menus.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClCompile Include="Src\PythonDiscovery.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\RenderMetrics.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClInclude Include="Src\RenderMetrics.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClCompile Include="Src\TextLayoutCache.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClInclude Include="Src\TextLayoutCache.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClCompile Include="Src\TextRasterCache.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClInclude Include="Src\TextRasterCache.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\TitleEditor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\CellEditor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClInclude Include="Src\CellEditor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClCompile Include="Src\NotebookStorage.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClInclude Include="Src\NotebookStorage.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\Markdown.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClInclude Include="Src\Markdown.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClCompile Include="ThirdParty\md4c\md4c.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\md4c\entity.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\NotebookShortcuts.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClInclude Include="Src\NotebookShortcuts.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+<ItemGroup><ClCompile Include="Src\KernelController.cpp"><Filter>Source Files</Filter></ClCompile><ClInclude Include="Src\KernelController.h"><Filter>Header Files</Filter></ClInclude><ClCompile Include="Src\NotebookToolbar.cpp"><Filter>Source Files</Filter></ClCompile><ClInclude Include="Src\NotebookToolbar.h"><Filter>Header Files</Filter></ClInclude></ItemGroup><ItemGroup><ClCompile Include="Src\CellScrollbar.cpp"><Filter>Source Files</Filter></ClCompile><ClInclude Include="Src\CellScrollbar.h"><Filter>Header Files</Filter></ClInclude></ItemGroup><ItemGroup><ClCompile Include="Src\NotebookNavigator.cpp"><Filter>Source Files</Filter></ClCompile><ClCompile Include="Src\NotebookViewport.cpp"><Filter>Source Files</Filter></ClCompile><ClCompile Include="Src\NotebookImage.cpp"><Filter>Source Files</Filter></ClCompile><ClCompile Include="Src\CellOutput.cpp"><Filter>Source Files</Filter></ClCompile><ClCompile Include="Src\ImageCache.cpp"><Filter>Source Files</Filter></ClCompile><ClCompile Include="Src\AppSettings.cpp"><Filter>Source Files</Filter></ClCompile><ClInclude Include="Src\NotebookNavigator.h"><Filter>Header Files</Filter></ClInclude><ClInclude Include="Src\NotebookViewport.h"><Filter>Header Files</Filter></ClInclude><ClInclude Include="Src\NotebookImage.h"><Filter>Header Files</Filter></ClInclude><ClInclude Include="Src\CellOutput.h"><Filter>Header Files</Filter></ClInclude><ClInclude Include="Src\ImageCache.h"><Filter>Header Files</Filter></ClInclude><ClInclude Include="Src\AppSettings.h"><Filter>Header Files</Filter></ClInclude></ItemGroup><ItemGroup><ClCompile Include="Src\MarkdownInline.cpp"><Filter>Source Files</Filter></ClCompile><ClInclude Include="Src\MarkdownInline.h"><Filter>Header Files</Filter></ClInclude><ClCompile Include="Src\ImageUpload.cpp"><Filter>Source Files</Filter></ClCompile><ClCompile Include="Src\NotebookFlow.cpp"><Filter>Source Files</Filter></ClCompile><ClInclude Include="Src\ImageUpload.h"><Filter>Header Files</Filter></ClInclude><ClInclude Include="Src\NotebookFlow.h"><Filter>Header Files</Filter></ClInclude></ItemGroup>
+<ItemGroup><ClCompile Include="Src\LoadMetrics.cpp"><Filter>Source Files</Filter></ClCompile><ClInclude Include="Src\LoadMetrics.h"><Filter>Header Files</Filter></ClInclude></ItemGroup>
+</Project>

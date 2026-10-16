@@ -1,0 +1,57 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="Winip" Manufacturer="Winip" Version="$(var.Version)" ProductCode="$(var.ProductCode)" Language="1033"
+           UpgradeCode="C99B13C5-F87D-45DA-9E97-80900BA0B3DA" Scope="perMachine" InstallerVersion="500">
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Winip is already installed." Schedule="afterInstallExecute" MigrateFeatures="yes" />
+    <MediaTemplate EmbedCab="yes" />
+    <Binary Id="WinipShellActions" SourceFile="$(var.ShellActions)" />
+    <CustomAction Id="RefreshAssociations" BinaryRef="WinipShellActions" DllEntry="RefreshAssociations" Execute="immediate" Return="ignore" />
+    <InstallExecuteSequence><Custom Action="RefreshAssociations" After="InstallFinalize" /></InstallExecuteSequence>
+    <Icon Id="Winip.exe" SourceFile="$(var.RepoRoot)\Src\Winip.ico" />
+    <Property Id="ARPPRODUCTICON" Value="Winip.exe" />
+    <SetProperty Id="ARPINSTALLLOCATION" Value="[INSTALLFOLDER]" After="CostFinalize" Sequence="execute" />
+    <Property Id="ARPNOMODIFY" Value="1" />
+    <Property Id="ASSOCIATE_IPYNB" Value="1" Secure="yes" />
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <Property Id="INSTALLFOLDER" Secure="yes">
+      <RegistrySearch Id="PreviousInstallFolder" Root="HKLM" Key="Software\Winip" Name="InstallFolder" Type="raw" Bitness="always64" />
+    </Property>
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Winip">
+        <Component Id="Application" Guid="*" Bitness="always64">
+          <File Id="WinipExe" Source="$(var.Payload)\Winip.exe" KeyPath="yes">
+            <Shortcut Id="StartWinip" Directory="WinipMenuFolder" Name="Winip" WorkingDirectory="INSTALLFOLDER" Advertise="yes" Icon="Winip.exe" />
+          </File>
+          <RegistryValue Root="HKLM" Key="Software\Winip" Name="InstallFolder" Value="[INSTALLFOLDER]" Type="string" />
+          <RemoveFolder Id="RemoveInstallFolder" On="uninstall" />
+        </Component>
+        <Component Id="UninstallShortcut" Guid="*" Bitness="always64">
+          <File Id="UninstallExe" Source="$(var.Payload)\Uninstall.exe" KeyPath="yes">
+            <Shortcut Id="UninstallWinip" Directory="WinipMenuFolder" Name="Uninstall Winip" Advertise="yes" Description="Remove Winip using Windows Installer" Icon="Winip.exe" />
+          </File>
+          <RemoveFolder Id="RemoveStartMenuFolder" Directory="WinipMenuFolder" On="uninstall" />
+        </Component>
+        <Component Id="NotebookAssociation" Guid="*" Bitness="always64">
+          <RegistryValue Root="HKLM" Key="Software\Classes\Winip.Notebook" Value="Jupyter notebook" Type="string" KeyPath="yes" />
+          <RegistryValue Root="HKLM" Key="Software\Classes\Winip.Notebook\DefaultIcon" Value="&quot;[INSTALLFOLDER]Winip.exe&quot;,0" Type="string" />
+          <RegistryValue Root="HKLM" Key="Software\Classes\Winip.Notebook\shell\open\command" Value="&quot;[INSTALLFOLDER]Winip.exe&quot; &quot;%1&quot;" Type="string" />
+          <RegistryValue Root="HKLM" Key="Software\Classes\.ipynb\OpenWithProgids" Name="Winip.Notebook" Value="" Type="string" />
+          <RegistryValue Root="HKLM" Key="Software\RegisteredApplications" Name="Winip" Value="Software\Winip\Capabilities" Type="string" />
+          <RegistryValue Root="HKLM" Key="Software\Winip\Capabilities" Name="ApplicationName" Value="Winip" Type="string" />
+          <RegistryValue Root="HKLM" Key="Software\Winip\Capabilities" Name="ApplicationDescription" Value="Edit and view Jupyter notebooks." Type="string" />
+          <RegistryValue Root="HKLM" Key="Software\Winip\Capabilities" Name="ApplicationIcon" Value="&quot;[INSTALLFOLDER]Winip.exe&quot;,0" Type="string" />
+          <RegistryValue Root="HKLM" Key="Software\Winip\Capabilities\FileAssociations" Name=".ipynb" Value="Winip.Notebook" Type="string" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder"><Directory Id="WinipMenuFolder" Name="Winip" /></StandardDirectory>
+    <Feature Id="Core" Title="Winip" Level="1" AllowAbsent="no">
+      <ComponentRef Id="Application" /><ComponentRef Id="UninstallShortcut" /><ComponentGroupRef Id="PayloadFiles" />
+    </Feature>
+    <Feature Id="FileAssociation" Title="Notebook file association" Level="1">
+      <Level Value="2" Condition="ASSOCIATE_IPYNB &lt;&gt; &quot;1&quot;" />
+      <ComponentRef Id="NotebookAssociation" />
+    </Feature>
+    <UIRef Id="WinipUI" />
+    <UIRef Id="WixUI_ErrorProgressText" />
+  </Package>
+</Wix>

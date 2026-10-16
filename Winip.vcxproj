@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{97e2ef8f-3032-485d-955d-fe05dbd2aa7a}</ProjectGuid>
+    <RootNamespace>Winip</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+    <EnableUnitySupport>false</EnableUnitySupport>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros">
+    <WinipVersionResource Condition="'$(WinipVersionResource)' == ''">$(ProjectDir)Src\ProductVersion.rc</WinipVersionResource>
+  </PropertyGroup>
+  <PropertyGroup>
+    <OutDir>$(ProjectDir)Out\Bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)Out\Obj\$(Platform)\$(Configuration)\$(MSBuildProjectName)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalOptions>/PDBALTPATH:%_PDB% %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>comdlg32.lib;shell32.lib;windowscodecs.lib;crypt32.lib;dxguid.lib;d3d11.lib;dxgi.lib;d2d1.lib;dwrite.lib;advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <MinimumRequiredVersion>6.01</MinimumRequiredVersion>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalOptions>/PDBALTPATH:%_PDB% %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>comdlg32.lib;shell32.lib;windowscodecs.lib;crypt32.lib;dxguid.lib;d3d11.lib;dxgi.lib;d2d1.lib;dwrite.lib;advapi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <MinimumRequiredVersion>6.01</MinimumRequiredVersion>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="Src\framework.h" />
+    <ClInclude Include="Src\AppPaths.h" />
+    <ClInclude Include="Src\Resource.h" />
+    <ClInclude Include="Src\targetver.h" />
+    <ClInclude Include="Src\Winip.h" /><ClInclude Include="Src\NotebookToolbar.h" /><ClInclude Include="Src\CellScrollbar.h" /><ClInclude Include="Src\NotebookNavigator.h" /><ClInclude Include="Src\NotebookViewport.h" /><ClInclude Include="Src\NotebookImage.h" /><ClInclude Include="Src\CellOutput.h" /><ClInclude Include="Src\ImageCache.h" /><ClInclude Include="Src\AppSettings.h" /><ClInclude Include="Src\KernelController.h" />
+    <ClInclude Include="Src\NotebookInput.h" /><ClInclude Include="Src\NotebookOutput.h" /><ClInclude Include="Src\Notebook.h" />
+    <ClInclude Include="Src\Renderer.h" />
+    <ClInclude Include="Src\RenderMetrics.h" />
+    <ClInclude Include="Src\TextLayoutCache.h" />
+    <ClInclude Include="Src\TextRasterCache.h" />
+    <ClInclude Include="Src\RenderPolicy.h" />
+    <ClInclude Include="Src\RasterContract.h" />
+    <ClInclude Include="Src\FontSet.h" />
+    <ClInclude Include="Src\TitleEditor.h" />
+    <ClInclude Include="Src\CellEditor.h" />
+    <ClInclude Include="Src\MarkdownInline.h" /><ClInclude Include="Src\LoadMetrics.h" /><ClInclude Include="Src\ImageUpload.h" /><ClInclude Include="Src\NotebookFlow.h" /><ClInclude Include="Src\Markdown.h" />
+    <ClInclude Include="Src\NotebookShortcuts.h" />
+    <ClInclude Include="Src\NotebookStorage.h" />
+    <ClInclude Include="Src\PythonDiscovery.h" />
+    <ClInclude Include="Src\Menus.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\Winip.cpp" /><ClCompile Include="Src\NotebookToolbar.cpp" /><ClCompile Include="Src\CellScrollbar.cpp" /><ClCompile Include="Src\NotebookNavigator.cpp" /><ClCompile Include="Src\NotebookViewport.cpp" /><ClCompile Include="Src\NotebookImage.cpp" /><ClCompile Include="Src\CellOutput.cpp" /><ClCompile Include="Src\ImageCache.cpp" /><ClCompile Include="Src\AppSettings.cpp" /><ClCompile Include="Src\KernelController.cpp" />
+    <ClCompile Include="Src\AppPaths.cpp" />
+    <ClCompile Include="Src\NotebookInput.cpp" /><ClCompile Include="Src\NotebookOutput.cpp" /><ClCompile Include="Src\Notebook.cpp" />
+    <ClCompile Include="Src\TitleEditor.cpp" />
+    <ClCompile Include="Src\CellEditor.cpp" />
+    <ClCompile Include="Src\MarkdownInline.cpp" /><ClCompile Include="Src\LoadMetrics.cpp" /><ClCompile Include="Src\ImageUpload.cpp" /><ClCompile Include="Src\NotebookFlow.cpp" /><ClCompile Include="Src\Markdown.cpp" />
+    <ClCompile Include="Src\NotebookShortcuts.cpp" />
+    <ClCompile Include="ThirdParty\md4c\md4c.c">
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\md4c\entity.c">
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="Src\NotebookStorage.cpp" />
+    <ClCompile Include="Src\Renderer.cpp" />
+    <ClCompile Include="Src\RenderMetrics.cpp" />
+    <ClCompile Include="Src\TextRasterCache.cpp" />
+    <ClCompile Include="Src\TextLayoutCache.cpp" />
+    <ClCompile Include="Src\FontSet.cpp" />
+    <ClCompile Include="Src\PythonDiscovery.cpp" />
+  </ItemGroup>
+  <ItemDefinitionGroup Condition="'$(WinipStaticRuntime)' == 'true'">
+    <ClCompile>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <MultiProcessorCompilation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</MultiProcessorCompilation>
+      <InlineFunctionExpansion Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">AnySuitable</InlineFunctionExpansion>
+      <IntrinsicFunctions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</IntrinsicFunctions>
+      <FavorSizeOrSpeed Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Speed</FavorSizeOrSpeed>
+    </ClCompile>
+    <Link>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+      <AdditionalDependencies>ole32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ResourceCompile Include="$(WinipVersionResource)" />
+    <ResourceCompile Include="Src\Winip.rc">
+      <AdditionalIncludeDirectories>$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="Src\small.ico" />
+    <Image Include="Src\Winip.ico" />
+  </ItemGroup>
+  <Target Name="RequireX64" BeforeTargets="PrepareForBuild">
+    <Error Condition="'$(Platform)' != 'x64'" Text="Winip is x64 only." />
+  </Target>
+  <Target Name="CopyKernelBridge" AfterTargets="Build"><Copy SourceFiles="$(ProjectDir)Runtime\kernel_bridge.py" DestinationFolder="$(OutDir)runtime" SkipUnchangedFiles="true" /></Target>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <Target Name="CopyBundledFonts" AfterTargets="Build">
+    <ItemGroup>
+      <FontAsset Include="$(ProjectDir)Assets\Fonts\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(FontAsset)" DestinationFolder="$(OutDir)fonts" SkipUnchangedFiles="true" />
+  </Target>
+  <Target Name="CopyMarkdownLicense" AfterTargets="Build">
+    <Copy SourceFiles="$(ProjectDir)ThirdParty\md4c\LICENSE.md" DestinationFiles="$(OutDir)licenses\md4c-LICENSE.md" SkipUnchangedFiles="true" />
+  </Target>
+  <Target Name="CopyDistributionNotices" AfterTargets="Build">
+    <Copy SourceFiles="$(ProjectDir)LICENSE" DestinationFiles="$(OutDir)licenses\Winip-LICENSE.txt" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(ProjectDir)THIRD-PARTY-NOTICES.md" DestinationFolder="$(OutDir)licenses" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(ProjectDir)ThirdParty\nlohmann\LICENSE.MIT" DestinationFiles="$(OutDir)licenses\nlohmann-json-LICENSE.txt" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(ProjectDir)ThirdParty\nlohmann\THIRD-PARTY-NOTICES.txt" DestinationFiles="$(OutDir)licenses\nlohmann-json-NOTICES.txt" SkipUnchangedFiles="true" />
+  </Target>
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

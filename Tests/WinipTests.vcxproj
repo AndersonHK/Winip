@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Release|x64"><Configuration>Release</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64"><Configuration>Debug</Configuration><Platform>x64</Platform></ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals"><ProjectGuid>{EA6730D0-78AF-4CCF-90AF-B37745705116}</ProjectGuid><WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion></PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration"><ConfigurationType>Application</ConfigurationType><PlatformToolset>v143</PlatformToolset><CharacterSet>Unicode</CharacterSet><UseDebugLibraries Condition="'$(Configuration)' == 'Debug'">true</UseDebugLibraries></PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <PropertyGroup><OutDir>$(ProjectDir)..\Out\Tests\$(Platform)\$(Configuration)\</OutDir><IntDir>$(ProjectDir)..\Out\Obj\$(Platform)\$(Configuration)\$(MSBuildProjectName)\</IntDir></PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile><WarningLevel>Level4</WarningLevel><LanguageStandard>stdcpp17</LanguageStandard><ConformanceMode>true</ConformanceMode><PreprocessorDefinitions>NOMINMAX;UNICODE;_UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions><AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions><Optimization Condition="'$(Configuration)' == 'Release'">MaxSpeed</Optimization></ClCompile>
+    <Link><SubSystem>Console</SubSystem><AdditionalDependencies>windowscodecs.lib;crypt32.lib;dxguid.lib;d3d11.lib;dxgi.lib;d2d1.lib;dwrite.lib;advapi32.lib;shell32.lib;ole32.lib;%(AdditionalDependencies)</AdditionalDependencies></Link>
+  </ItemDefinitionGroup>
+  <ItemGroup><ClInclude Include="NotebookFlowTests.h" /><ClCompile Include="NotebookFlowTests.cpp" /><ClInclude Include="NotebookIoBenchmark.h" /><ClCompile Include="NotebookIoBenchmark.cpp" /><ClCompile Include="NotebookTests.cpp" /><ClCompile Include="KernelControllerTests.cpp" /><ClCompile Include="..\Src\NotebookToolbar.cpp" /><ClCompile Include="..\Src\CellScrollbar.cpp" /><ClCompile Include="..\Src\NotebookNavigator.cpp" /><ClCompile Include="..\Src\NotebookViewport.cpp" /><ClCompile Include="..\Src\NotebookImage.cpp" /><ClCompile Include="..\Src\CellOutput.cpp" /><ClCompile Include="..\Src\ImageCache.cpp" /><ClCompile Include="..\Src\AppSettings.cpp" /><ClCompile Include="..\Src\KernelController.cpp" /><ClCompile Include="TextRasterCacheTests.cpp" /><ClCompile Include="..\Src\NotebookInput.cpp" /><ClCompile Include="..\Src\NotebookOutput.cpp" /><ClCompile Include="..\Src\Notebook.cpp" /><ClCompile Include="..\Src\TitleEditor.cpp" /><ClCompile Include="..\Src\CellEditor.cpp" /><ClCompile Include="..\Src\MarkdownInline.cpp" /><ClCompile Include="..\Src\LoadMetrics.cpp" /><ClCompile Include="..\Src\ImageUpload.cpp" /><ClCompile Include="..\Src\NotebookFlow.cpp" /><ClCompile Include="..\Src\Markdown.cpp" /><ClCompile Include="..\Src\NotebookShortcuts.cpp" /><ClCompile Include="..\ThirdParty\md4c\md4c.c"><WarningLevel>TurnOffAllWarnings</WarningLevel></ClCompile><ClCompile Include="..\ThirdParty\md4c\entity.c"><WarningLevel>TurnOffAllWarnings</WarningLevel></ClCompile><ClCompile Include="..\Src\NotebookStorage.cpp" /><ClCompile Include="..\Src\Renderer.cpp" /><ClCompile Include="..\Src\RenderMetrics.cpp" /><ClCompile Include="..\Src\TextRasterCache.cpp" /><ClCompile Include="..\Src\TextLayoutCache.cpp" /><ClCompile Include="..\Src\FontSet.cpp" /><ClCompile Include="..\Src\PythonDiscovery.cpp" /></ItemGroup>
+  <Target Name="CopyKernelBridge" AfterTargets="Build"><Copy SourceFiles="$(ProjectDir)..\Runtime\kernel_bridge.py" DestinationFolder="$(OutDir)runtime" SkipUnchangedFiles="true" /></Target>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <Target Name="CopyBundledFonts" AfterTargets="Build">
+    <ItemGroup><FontAsset Include="$(ProjectDir)..\Assets\Fonts\*" /></ItemGroup>
+    <Copy SourceFiles="@(FontAsset)" DestinationFolder="$(OutDir)fonts" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

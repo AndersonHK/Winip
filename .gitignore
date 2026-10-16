@@ -1,0 +1,33 @@
+# Local IDE state
+.vs/
+*.user
+*.VC.db
+__pycache__/
+*.py[cod]
+
+# Reproducible build products and private validation evidence
+/[Oo]ut/
+/[Aa]rtifacts/
+
+# Legacy build layouts (do not reintroduce these)
+/x64/
+/build/
+/Winip/x64/
+
+# Compiled output (release installers are uploaded separately, never committed)
+*.exe
+*.dll
+*.lib
+*.exp
+*.obj
+*.pch
+*.ipch
+*.pdb
+*.ilk
+*.iobj
+*.ipdb
+*.tlog
+*.msi
+*.wixpdb
+/Dist/x64/Win/SHA256SUMS.txt
+/Dist/**/*.tmp

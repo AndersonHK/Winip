@@ -1,0 +1,18 @@
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations"><ProjectConfiguration Include="Release|x64"><Configuration>Release</Configuration><Platform>x64</Platform></ProjectConfiguration></ItemGroup>
+  <PropertyGroup Label="Globals"><ProjectGuid>{C1D889C4-2FEA-483A-8262-7F6CC8110F1B}</ProjectGuid><WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion></PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration"><ConfigurationType>Application</ConfigurationType><PlatformToolset>v143</PlatformToolset><CharacterSet>Unicode</CharacterSet><UseDebugLibraries>false</UseDebugLibraries></PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <PropertyGroup><OutDir>$(ProjectDir)..\Out\Packaging\payload\</OutDir><IntDir>$(ProjectDir)..\Out\Packaging\uninstall-obj\</IntDir><TargetName>Uninstall</TargetName></PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile><TreatWarningAsError>true</TreatWarningAsError></ClCompile>
+    <Link><TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors><AdditionalOptions>/PDBALTPATH:%_PDB% %(AdditionalOptions)</AdditionalOptions></Link>
+    <ClCompile><WarningLevel>Level4</WarningLevel><LanguageStandard>stdcpp17</LanguageStandard><RuntimeLibrary>MultiThreaded</RuntimeLibrary><Optimization>MaxSpeed</Optimization><PreprocessorDefinitions>NOMINMAX;UNICODE;_UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions></ClCompile>
+    <ResourceCompile><AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories></ResourceCompile>
+    <Link><SubSystem>Windows</SubSystem><AdditionalDependencies>msi.lib;shell32.lib;user32.lib;%(AdditionalDependencies)</AdditionalDependencies></Link>
+  </ItemDefinitionGroup>
+  <PropertyGroup><WinipVersionResource Condition="'$(WinipVersionResource)' == ''">$(ProjectDir)..\Src\ProductVersion.rc</WinipVersionResource></PropertyGroup>
+  <ItemGroup><ClCompile Include="Uninstall.cpp" /><ResourceCompile Include="Uninstall.rc" /><ResourceCompile Include="$(WinipVersionResource)" /></ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>
