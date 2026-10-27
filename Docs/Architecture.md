@@ -19,7 +19,13 @@ Current implementation: native C++17/Win32, x64, DirectWrite shaping, hardware D
 | `FontSet.h/.cpp` | Noncopyable owner of the private bundled font collection and loader registration | Preserve lifetime ordering as application ownership is extracted |
 | `TitleEditor.h/.cpp` | Encapsulated title buffer, active state, caret/selection and edit operations | Clipboard/IME/accessibility and general cell editing remain separate work |
 | `Menus.h` | Menu data and geometry | Matching source file and encapsulated menu owner |
-| `PythonDiscovery.h/.cpp` | Interpreter selection and isolated identity probe | Discovery ownership extraction |
+| `PythonDiscovery.h/.cpp` | Explicit/activated/PATH/registered interpreter selection, isolated identity and bounded package checks | Broader distribution inventories |
+| `PythonSetup.h/.cpp`, `ChildProcess.h/.cpp` | Native advisory, confirmed installation operations, cancellation and bounded child ownership | Manual installer and permission acceptance |
+| `PythonSetupPlan.h/.cpp` | Shared readiness-to-setup-stage policy for app and MSI | Broader distribution recovery |
+| `SetupWindowOwner.h/.cpp` | Product-specific MSI owner selection across custom-action/client processes | Live installer foreground acceptance |
+| `SetupWindowStyle.h/.cpp` | Private Noto fonts, centered monitor-bounded dialog geometry and native control styling | Manual multi-monitor visual acceptance |
+| `TextEncoding.h/.cpp` | Shared strict UTF-8/UTF-16 conversion for notebook and installer | None in this slice |
+| `KernelFooter.h/.cpp` | Priority allocation for measured footer columns | Accessibility acceptance |
 | `KernelController.h/.cpp` | Owned bridge/process job, execution worker, generations and interrupt event | Graceful shutdown, idle failure monitoring, extended protocol |
 | `AppSettings.h/.cpp` | Validated settings snapshot and sleeping atomic-write worker | More settings, cross-instance merge policy |
 | `NotebookImage.h/.cpp` | Immutable full-source WIC decode and ICC profile | High-depth/other formats and broader color validation |

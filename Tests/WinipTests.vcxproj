@@ -20,4 +20,10 @@
     <ItemGroup><FontAsset Include="$(ProjectDir)..\Assets\Fonts\*" /></ItemGroup>
     <Copy SourceFiles="@(FontAsset)" DestinationFolder="$(OutDir)fonts" SkipUnchangedFiles="true" />
   </Target>
+
+  <ItemGroup><ClCompile Include="..\Src\ChildProcess.cpp" /><ClCompile Include="..\Src\KernelFooter.cpp" /><ClInclude Include="..\Src\ChildProcess.h" /><ClInclude Include="..\Src\KernelFooter.h" /></ItemGroup>
+<ItemGroup><ClCompile Include="KernelSetupTests.cpp" /><ClInclude Include="KernelSetupTests.h" /></ItemGroup>
+<ItemGroup><ClCompile Include="..\Src\TextEncoding.cpp" /><ClInclude Include="..\Src\TextEncoding.h" /><ClCompile Include="..\Src\PythonSetupPlan.cpp" /><ClInclude Include="..\Src\PythonSetupPlan.h" /></ItemGroup>
+<ItemGroup><ClCompile Include="..\Src\SetupWindowStyle.cpp" /><ClInclude Include="..\Src\SetupWindowStyle.h" /></ItemGroup>
+<ItemGroup><ClCompile Include="..\Src\SetupWindowOwner.cpp" /><ClInclude Include="..\Src\SetupWindowOwner.h" /></ItemGroup>
 </Project>

@@ -23,8 +23,9 @@
       <Publish Dialog="BrowseDlg" Control="OK" Event="CheckTargetPath" Value="[WIXUI_INSTALLDIR]" Order="1" />
       <Publish Dialog="BrowseDlg" Control="OK" Event="SetTargetPath" Value="[_BrowseProperty]" Order="2" />
       <Publish Dialog="BrowseDlg" Control="OK" Event="EndDialog" Value="Return" Order="3" />
-      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="AssociationsDlg" Condition="NOT Installed AND NOT WIX_UPGRADE_DETECTED" />
-      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="UpgradeDlg" Condition="NOT Installed AND WIX_UPGRADE_DETECTED" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="KernelDependenciesDlg" Condition="NOT Installed AND WINIP_SETUP_STATE &lt;&gt; &quot;ready&quot;" Order="1" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="AssociationsDlg" Condition="NOT Installed AND NOT WIX_UPGRADE_DETECTED AND WINIP_SETUP_STATE = &quot;ready&quot;" Order="2" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="UpgradeDlg" Condition="NOT Installed AND WIX_UPGRADE_DETECTED AND WINIP_SETUP_STATE = &quot;ready&quot;" Order="2" />
       <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="MaintenanceTypeDlg" Condition="Installed AND NOT PATCH" />
       <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Condition="Installed AND PATCH" />
       <Publish Dialog="MaintenanceWelcomeDlg" Control="Next" Event="NewDialog" Value="MaintenanceTypeDlg" />
@@ -38,7 +39,7 @@
         <Control Id="Preserved" Type="Text" X="20" Y="160" Width="330" Height="50" Text="Your notebook files, user settings and association choice are preserved. To repair without updating, cancel and run the installer for your installed version, then choose Repair." />
         <Control Id="Line" Type="Line" X="0" Y="234" Width="370" Height="0" />
         <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back"><Publish Event="NewDialog" Value="WelcomeDlg" /></Control>
-        <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="&amp;Update"><Publish Event="NewDialog" Value="VerifyReadyDlg" /></Control>
+        <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="&amp;Update"><Publish Event="NewDialog" Value="KernelDependenciesDlg" Condition="WINIP_SETUP_STATE &lt;&gt; &quot;ready&quot;" Order="1" /><Publish Event="NewDialog" Value="VerifyReadyDlg" Condition="WINIP_SETUP_STATE = &quot;ready&quot;" Order="2" /></Control>
         <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="Cancel"><Publish Event="SpawnDialog" Value="CancelDlg" /></Control>
       </Dialog>
       <Dialog Id="AssociationsDlg" Width="370" Height="270" Title="[ProductName] Setup">
@@ -51,8 +52,26 @@
         <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="&amp;Next">
           <Publish Event="AddLocal" Value="FileAssociation" Order="1" Condition="ASSOCIATE_IPYNB = &quot;1&quot;" />
           <Publish Event="Remove" Value="FileAssociation" Order="2" Condition="ASSOCIATE_IPYNB &lt;&gt; &quot;1&quot;" />
-          <Publish Event="NewDialog" Value="VerifyReadyDlg" Order="3" />
+          <Publish Event="NewDialog" Value="KernelDependenciesDlg" Order="3" Condition="WINIP_SETUP_STATE &lt;&gt; &quot;ready&quot;" />
+          <Publish Event="NewDialog" Value="VerifyReadyDlg" Order="4" Condition="WINIP_SETUP_STATE = &quot;ready&quot;" />
         </Control>
+        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="Cancel"><Publish Event="SpawnDialog" Value="CancelDlg" /></Control>
+      </Dialog>
+      <Dialog Id="KernelDependenciesDlg" Width="370" Height="270" Title="[ProductName] Setup">
+        <Control Id="Title" Type="Text" X="15" Y="15" Width="340" Height="25" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Bigger}[WINIP_SETUP_TITLE]" />
+        <Control Id="Description" Type="Text" X="20" Y="55" Width="330" Height="44" Text="[WINIP_SETUP_DESCRIPTION]" />
+        <Control Id="InstallSupport" Type="CheckBox" X="20" Y="110" Width="330" Height="36" Property="WINIP_SETUP_REQUESTED" CheckBoxValue="1" Text="{\WixUI_Font_Title}[WINIP_SETUP_CHOICE]" HideCondition="WINIP_SETUP_STATE = &quot;repair&quot;" />
+        <Control Id="Explanation" Type="Text" X="20" Y="162" Width="330" Height="56" Text="After Winip is installed, this wizard will guide you through any missing components. You will review the Python environment and destination before installation. You can skip setup and use Winip for editing." />
+        <Control Id="Line" Type="Line" X="0" Y="234" Width="370" Height="0" />
+        <Control Id="Back" Type="PushButton" X="106" Y="243" Width="56" Height="17" Text="&amp;Back">
+          <Publish Event="NewDialog" Value="AssociationsDlg" Condition="NOT WIX_UPGRADE_DETECTED" Order="1" />
+          <Publish Event="NewDialog" Value="UpgradeDlg" Condition="WIX_UPGRADE_DETECTED" Order="2" />
+        </Control>
+        <Control Id="Skip" Type="PushButton" X="168" Y="243" Width="64" Height="17" Text="Skip setup">
+          <Publish Property="WINIP_SETUP_REQUESTED" Value="{}" Order="1" />
+          <Publish Event="NewDialog" Value="VerifyReadyDlg" Order="2" />
+        </Control>
+        <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="&amp;Next"><Publish Event="NewDialog" Value="VerifyReadyDlg" /></Control>
         <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="Cancel"><Publish Event="SpawnDialog" Value="CancelDlg" /></Control>
       </Dialog>
     </UI>

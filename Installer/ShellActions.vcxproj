@@ -8,9 +8,16 @@
   <ItemDefinitionGroup>
     <ClCompile><TreatWarningAsError>true</TreatWarningAsError></ClCompile>
     <Link><TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors><AdditionalOptions>/PDBALTPATH:%_PDB% %(AdditionalOptions)</AdditionalOptions></Link>
-    <ClCompile><WarningLevel>Level4</WarningLevel><LanguageStandard>stdcpp17</LanguageStandard><RuntimeLibrary>MultiThreaded</RuntimeLibrary><Optimization>MaxSpeed</Optimization></ClCompile>
-    <Link><AdditionalDependencies>shell32.lib;%(AdditionalDependencies)</AdditionalDependencies></Link>
+    <ClCompile><WarningLevel>Level4</WarningLevel><LanguageStandard>stdcpp17</LanguageStandard><RuntimeLibrary>MultiThreaded</RuntimeLibrary><Optimization>MaxSpeed</Optimization><AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions><PreprocessorDefinitions>NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions></ClCompile>
+    <Link><AdditionalDependencies>shell32.lib;msi.lib;advapi32.lib;ole32.lib;comdlg32.lib;gdi32.lib;user32.lib;%(AdditionalDependencies)</AdditionalDependencies></Link>
   </ItemDefinitionGroup>
-  <ItemGroup><ClCompile Include="ShellActions.cpp" /></ItemGroup>
+  <ItemGroup><ClCompile Include="ShellActions.cpp" /><ClCompile Include="SetupActions.cpp" />
+    <ClCompile Include="..\Src\PythonDiscovery.cpp" /><ClCompile Include="..\Src\ChildProcess.cpp" />
+    <ClCompile Include="..\Src\TextEncoding.cpp" /><ClCompile Include="..\Src\PythonSetup.cpp" />
+    <ClCompile Include="..\Src\PythonSetupPlan.cpp" /><ClCompile Include="..\Src\AppPaths.cpp" />
+    <ResourceCompile Include="..\Src\PythonSetup.rc" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+<ItemGroup><ClCompile Include="..\Src\SetupWindowStyle.cpp" /><ClInclude Include="..\Src\SetupWindowStyle.h" /></ItemGroup>
+<ItemGroup><ClCompile Include="..\Src\SetupWindowOwner.cpp" /><ClInclude Include="..\Src\SetupWindowOwner.h" /></ItemGroup>
 </Project>

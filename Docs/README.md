@@ -2,7 +2,7 @@
 
 Winip is a native C++17 Windows x64 notebook application. Start with the root
 [README](../README.md) for what it does, installation and build commands. The
-current application version is 0.2.2; see [Parity.md](Parity.md) for supported
+current application version is 0.3.3; see [Parity.md](Parity.md) for supported
 features and remaining gaps.
 
 ## Authoritative guides
@@ -50,8 +50,13 @@ are kept only in ignored local archives; they are not distributed with the sourc
 | [07](Checkpoint-07.md) | Kernel lifecycle, image output, settings and MSI maintenance |
 | [08](Checkpoint-08.md) | Buffered large-notebook I/O |
 | [09](Checkpoint-09.md) | Wrapped Markdown, image fitting and eager preparation |
+| [10](Checkpoint-10.md) | Kernel readiness, guided setup, status/menu interaction and release 0.3.3 |
 
 The [HDR capture investigation](HDR-Capture-Investigation.md) records rejected
 experiments and unresolved capture behavior. [Earlier product research](Research.md)
 and the original [architecture](Archive/Architecture-initial.md) and
 [roadmap](Archive/Roadmap-initial.md) are dated context, not the current design.
+
+The [0.3 setup design record](Archive/Kernel-Setup-Plan-0.3.md) and
+[installer guide through 0.2.2](Archive/Packaging-through-0.2.2.md) are historical.
+Use the topic guides above for current behavior and commands.

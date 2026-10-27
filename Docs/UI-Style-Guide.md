@@ -8,7 +8,7 @@ Use a light notebook page, readable dark text, pale code-cell backgrounds, and a
 
 Keep the editable document title above two distinct control rows:
 
-1. A light-gray custom menu row: File, Edit, View, Insert, Cell, Kernel, Widgets, Help. It contains fine-grained actions and dropdowns.
+1. A light-gray custom menu row: File, Edit, View, Insert, Cell, Kernel, Widgets, Settings, Help. It contains fine-grained actions and dropdowns.
 2. A separate white toolbar row for common actions and cell type. Its contents remain responsive at smaller widths.
 
 There is no redundant native application menu above these rows. The native title bar/system controls are distinct from the custom application menus. Disabled future actions remain visibly disabled until they work; do not implement success-looking placeholders.
@@ -64,12 +64,80 @@ Visibility follows the actual paper margin, not an arbitrary small-window breakp
 
 Only navigator headings use Noto Sans ExtraBold, reduced by two DIPs from the initial candidate (11–18 DIPs depending on proximity). They have no background plate. Notebook headings, cell text and the rest of the UI keep their existing typography. Nearby headings receive priority when labels would collide; original heading source remains intact. Each distinct trace row represents actual cell position/density, not equal spacing.
 
-## Kernel indicators and settings (0.2.0)
+The painted thumb has a three-DIP inset from the rail on all four sides at the
+scroll endpoints. Its rounded caps share centers with the rail's caps. Drawing
+and dragging use the same actual thumb rectangle and travel range, so both ends
+remain reachable without a jump when the thumb is grabbed.
 
-The footer has a filled circle immediately beside kernel status: gray disconnected, green connected/idle, red connected/busy. Run all gains a refresh symbol while busy; it is a state indicator, not an unbounded animation. All shapes/text render at current physical resolution.
+## Kernel status and controls
 
-File → Settings offers HDR On/Off, last-opened/fixed folder mode, and a native fixed-folder picker. HDR defaults off; Downloads initializes both folder choices. Kernel → Select interpreter selects an existing executable for this session. Ctrl+Shift+I interrupts, Ctrl+Shift+R restarts, Ctrl+Shift+. force-stops.
+The footer begins with a circle and kernel state: gray disconnected, green idle,
+red busy, amber setup required/failed. Connected labels include the selected
+Python version, for example `Kernel Idle — Python 3.9.7 | Saved | 51 cells`.
+Stopped, disconnected and not-started labels omit the version. The document-status
+column does not repeat it.
 
-## Image sizing (0.2.2)
+Reserve measured space for the idle/version label and finite kernel states.
+Hide renderer information before document details when the window narrows.
+Kernel text is not ellipsized. Errors wrap in an additional footer area; unusually
+long messages can be scrolled and remain selectable in the automatic advisory.
+Notebook geometry and input use the resulting viewport bounds.
 
-Images fit the available page width and viewport height by default, without enlarging a smaller source. Double-clicking an image switches to its natural display size; normal vertical scrolling and the draggable cell overflow bar expose its full extent. Double-click again to fit. Output metadata display dimensions remain honored (including retina images). Fit/full-size is transient view state and does not dirty the notebook. Clicking the image selects its cell without opening Markdown source; clicking text retains the edit behavior.
+Clicking only the kernel column connects a stopped, disconnected or not-yet-started
+kernel without running cells. Drawing publishes the hit region; input rechecks
+live state to prevent duplicate starts or restarting a running kernel. Neighboring
+status fields and error rows are informational. Open menus retain ordinary
+click-dismiss behavior.
+
+Restart requires a connected kernel, Interrupt requires connected/busy, and Stop
+requires an active process/request. Keyboard handlers enforce those same guards.
+Run all shows a refresh symbol while busy, without continuous animation.
+
+## Guided setup and error presentation
+
+Missing requirements and kernel failures open the advisory automatically. Connect
+or Run reopens it when recovery is still needed; there is no separate setup/details
+menu item. The [Python guide](Python-and-Storage.md) owns dependency and installation
+policy.
+
+The dialog is centered over its owner and constrained to that monitor's work area.
+It uses private Noto Sans, dark text, white flat buttons with gray borders, and a
+white details area on the notebook's light-gray surround. Font/control geometry
+is rebuilt on DPI changes. The primary action receives initial focus rather than
+selecting diagnostic text.
+
+Installer ownership must allow the visible wizard to belong to a different process
+from the custom-action host. Do not attach to unrelated foreground windows. Once
+shown, the guide requests normal activation and focuses its primary action once;
+it is not permanently topmost and does not repeatedly reclaim focus.
+
+The installation choice is prominent and checked by default when a component is
+missing. A separate review page names the interpreter, packages and destination
+before the explicit Install action. X/Escape dismisses the app guide. During an
+operation, Cancel remains available; X cancels and closes after cleanup. The MSI
+flow also provides Skip setup. There is no Continue editing button.
+
+## Settings and About
+
+Settings is a top-level dropdown between Widgets and Help. It offers HDR On/Off,
+last-opened/fixed-folder mode and a native fixed-folder picker. HDR defaults off;
+Downloads initializes both folder choices. Alt+S opens Settings; left/right menu
+navigation and compact slots cover all nine labels at supported window widths.
+
+Kernel → Select interpreter selects an executable for the current session.
+Ctrl+Shift+I interrupts, Ctrl+Shift+R restarts and Ctrl+Shift+. force-stops.
+
+Help → About Winip displays `Version 0.3.3 — Windows x86-64`. The numeric version
+comes from the loaded executable's mapped resource, so replacing its file on disk
+does not change an already-running instance's reported version. The platform label
+identifies this 64-bit x86 Windows build; other platform builds must identify their
+own target.
+
+## Image sizing
+
+Images fit the available page width and viewport height by default, without
+upscaling smaller sources. Double-click switches between fitting and natural
+size; vertical scrolling and the cell overflow bar expose the full image.
+Output metadata dimensions remain honored, including retina images. This view
+state does not dirty the notebook. Clicking an image selects its cell without
+opening Markdown source; clicking text retains normal editing behavior.

@@ -1,4 +1,5 @@
 #include "TextRasterCacheTests.h"
+#include "KernelSetupTests.h"
 #include "NotebookIoBenchmark.h"
 #include "NotebookFlowTests.h"
 #include "../Src/LoadMetrics.h"
@@ -22,6 +23,7 @@
 #include "../Src/AppSettings.h"
 #include "../Src/CellOutput.h"
 #include "../Src/PythonDiscovery.h"
+#include "../Src/PythonSetupPlan.h"
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -40,6 +42,29 @@ void Reject(const std::filesystem::path& path) {
 void RunKernelControllerTests(const std::filesystem::path&,const std::wstring&);
 int wmain(int argc, wchar_t** argv) {
     try {
+        if(argc>=2 && std::wstring(argv[1])==L"--setup-child") {
+            auto values=nlohmann::json::array();
+            for(int i=2;i<argc;++i)values.push_back(Utf8(argv[i]));
+            std::cout<<values.dump();return 0;
+        }
+        if(argc==2 && std::wstring(argv[1])==L"--setup-sleep") {Sleep(30000);return 0;}
+        if(argc==4 && std::wstring(argv[1])==L"--setup-tests") {
+            RunKernelSetupTests(argv[2],argv[3],std::filesystem::absolute(argv[0]).wstring());
+            std::cout<<"Kernel setup model/process tests passed\n";return 0;
+        }
+        if(argc==4 && std::wstring(argv[1])==L"--kernel-connect-test") {
+            RunKernelConnectionTest(argv[2],argv[3]);
+            std::cout<<"Real kernel connect/restart/stop passed; no notebook cells executed\n";return 0;
+        }
+        if(argc==3 && std::wstring(argv[1])==L"--python-readiness") {
+            std::atomic<bool> cancel{false};
+            auto identity=DiscoverPython(ReadPythonEnvironment(argv[2]),cancel);
+            auto missing=nlohmann::json::array();for(const auto& name:identity.missingPackages)missing.push_back(Utf8(name));
+            std::cout<<nlohmann::json{{"executable",Utf8(identity.executable)},{"error",Utf8(identity.error)},
+                {"package_error",Utf8(identity.packageError)},{"ready",identity.kernelReady},{"pip",identity.pipAvailable},
+                {"ensurepip",identity.ensurePipAvailable},{"virtual",identity.virtualEnvironment},{"missing",missing},
+                {"setup_stage",Utf8(PythonSetupPlan::Name(PythonSetupPlan::Stage(identity)))}}.dump();return 0;
+        }
         if(argc==3 && std::wstring(argv[1])==L"--inspect-image-layout") {
             auto notebook=Notebook::Load(argv[2]);PrepareNotebookLayout(notebook);
             auto report=nlohmann::json::array();
@@ -243,6 +268,18 @@ int wmain(int argc, wchar_t** argv) {
         auto spaced=Markdown::Prepare(markdownFactory.Get(),markdownFonts.Collection(),L"# test");
         Require(compact->Text()==spaced->Text() && compact->Height()==spaced->Height(),"Permissive Markdown heading mismatch");
         NotebookNavigator navigator;auto geometry=NotebookNavigator::Geometry(1200,900,10000,0);
+        for(int height:{320,900})for(int documentHeight:{1000,10000,1000000}) {
+            const auto top=NotebookNavigator::Geometry(1200,height,documentHeight,0);
+            const auto bottom=NotebookNavigator::Geometry(1200,height,documentHeight,top.maximum);
+            Require(std::abs(top.thumbY-top.y-top.thumbInset)<.001f,"Navigator top margin differs from side margin");
+            Require(std::abs((bottom.y+bottom.height)-(bottom.thumbY+bottom.thumbHeight)-bottom.thumbInset)<.001f,"Navigator bottom margin differs from side margin");
+            const int middle=top.maximum/2;
+            const auto midway=NotebookNavigator::Geometry(1200,height,documentHeight,middle);
+            NotebookNavigator held;
+            held.Begin(midway.thumbY+midway.thumbHeight/2,midway,0);
+            Require(std::abs(held.Drag(midway.thumbY+midway.thumbHeight/2,midway)-middle)<=1,"Inset thumb jumps when grabbed");
+            Require(held.Drag(top.y,midway)==0 && held.Drag(top.y+top.height,midway)==top.maximum,"Inset thumb cannot reach both scroll endpoints");
+        }
         navigator.Begin(geometry.thumbY+5,geometry,100);
         Require(navigator.Drag(geometry.y+geometry.height,geometry)==geometry.maximum,"Vertical end mapping failed");
         Require(navigator.Drag(geometry.y+5,geometry)==0,"Vertical beginning mapping failed");

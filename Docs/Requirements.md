@@ -14,7 +14,7 @@ The application is designed around these requirements:
 - Meet the active refresh deadline: 6.25 ms at 160 Hz (the earlier 6 ms rule was a rounded guide). Ordinary updates should not miss a frame; a substantial update arriving mid-frame may miss at most one.
 - User-driven resize, maximize, minimize, and fullscreen changes are synchronous and atomic: no partial frames, stretched prior frame, or old-size presentation. Expensive document/kernel work remains asynchronous. Near-zero idle CPU/GPU work.
 - Larger restored windows and maximized launch; Alt+Enter fullscreen; inline title renaming; a custom dropdown menu row above the separate toolbar row.
-- Python selection honors explicit and activated-environment overrides, inherited terminal PATH, and otherwise registered user PATH before system PATH.
+- Python selection honors explicit and activated-environment overrides, inherited terminal PATH, and otherwise registered user PATH before system PATH, followed by registered installations. Automatic desktop discovery may prefer an already kernel-compatible registration; explicit/activated/terminal selections remain fixed.
 - Validate incremental checkpoints with scripted notebook fixtures; the user handles manual computer-use checks, and commit stable progress. Record limitations instead of claiming untested OS, hardware, or performance guarantees.
 
 ## Intended experience
@@ -88,3 +88,14 @@ Persist HDR and file-open folder policy under Roaming Winip. Default to the last
 ## Large-notebook patch scope (2026-09-14)
 
 The maintainer requests at least 4 GiB file support for 0.2.1; larger/terabyte-scale handling can wait for a future patch. File-open failures must be conspicuous error windows, not status-only messages. Preserve ordinary UI, resize, idle and image fidelity behavior, with baseline comparisons before the checkpoint. A size acceptance test must contain real preserved JSON payload, not only whitespace or a sparse file.
+
+## Kernel setup requirement (0.3.0)
+
+Expose missing kernel support before execution and explain startup failures in
+full. Keep essential kernel status visible by dropping optional footer columns
+first. Automatically check requirements and offer default-on, skippable guided installation
+in the MSI and application, with explicit destination confirmation;
+a working kernel must not trigger pip recommendations. Select stable compatible
+versions without unnecessary upgrades, detect completed external installations,
+and offer the official route after failure. See [Python and storage](Python-and-Storage.md)
+for implemented scope and [the acceptance plan](Archive/Kernel-Setup-Plan-0.3.md).

@@ -2,6 +2,43 @@
 
 Use the smallest suite that covers a change's real failure modes. A documentation-only checkpoint needs link/status/reference verification; rendering, document, or kernel changes need the relevant executable tests. Record failures and measurement limitations even when a later run passes.
 
+## Release 0.3.3 checks
+
+[Checkpoint 10](Checkpoint-10.md) summarizes the release's observed evidence and
+remaining limits. Run the model suites before setup-specific checks:
+
+```powershell
+python Scripts/build.py Release --tests
+python Scripts/build.py Debug --tests
+python Scripts/setup_tests.py
+powershell -NoProfile -ExecutionPolicy Bypass -File Scripts/setup_bootstrap_tests.ps1
+python Scripts/installer_setup_tests.py
+python Scripts/packaging_tests.py --ice
+```
+
+`setup_tests.py` uses a disposable virtual environment without pip and small module
+fixtures to test missing/ready/broken-import classification. It also checks hidden
+child ownership/cancellation, retained startup stderr, footer state/hit boundaries,
+menu widths and MSI owner selection. The native model suite covers navigator
+endpoints and existing text/image rendering contracts. Owner-selection fixtures
+are presentation doubles and do not create windows or change desktop focus.
+
+`setup_bootstrap_tests.ps1` simulates network and installer operations to verify
+stable/platform selection, URL restrictions, hash/signature rejection, failures
+and cleanup. `installer_setup_tests.py` uses a restricted MSI session for native
+readiness properties, ten conditional page routes, default guidance, skip and
+silent-install behavior. Neither script installs host packages.
+
+When a previous installer is available, add
+`--previous-msi Out/Packaging/Winip-0.2.2-x64.msi` to packaging checks. Keep that
+comparison baseline outside `Dist/`. A real connection/restart/stop check can be
+run explicitly with `WinipTests.exe --kernel-connect-test <repo-root> <python.exe>`;
+it requires existing compatible packages and executes no notebook cells.
+
+Interactive focus, installer recovery and visual acceptance remain separate from
+these checks. Builds and test scripts never uninstall or upgrade the host's Python,
+pip or other environments as a side effect.
+
 ## Commands and evidence
 
 From the repository root:

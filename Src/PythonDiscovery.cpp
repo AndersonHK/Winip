@@ -1,6 +1,8 @@
 #include "framework.h"
 #include "PythonDiscovery.h"
-#include "Notebook.h"
+#include "ChildProcess.h"
+#include "TextEncoding.h"
+#include "../ThirdParty/nlohmann/json.hpp"
 #include <tlhelp32.h>
 #include <filesystem>
 #include <vector>
@@ -51,10 +53,49 @@ std::wstring InPath(const std::wstring& path) {
     }
     return {};
 }
+std::vector<std::wstring> Subkeys(HKEY root, const std::wstring& path) {
+    HKEY key = nullptr;
+    std::vector<std::wstring> result;
+    if (RegOpenKeyExW(root, path.c_str(), 0, KEY_READ | KEY_WOW64_64KEY, &key) != ERROR_SUCCESS) return result;
+    for (DWORD i = 0; ; ++i) {
+        wchar_t name[256]; DWORD size = 256;
+        if (RegEnumKeyExW(key, i, name, &size, nullptr, nullptr, nullptr, nullptr) != ERROR_SUCCESS) break;
+        result.emplace_back(name, size);
+    }
+    RegCloseKey(key);
+    return result;
+}
+std::wstring RegistryString(HKEY root, const std::wstring& path, const wchar_t* name) {
+    wchar_t value[32768]; DWORD bytes = sizeof(value);
+    if (RegGetValueW(root, path.c_str(), name, RRF_RT_REG_SZ,
+        nullptr, value, &bytes) != ERROR_SUCCESS) return {};
+    return value;
+}
+void RegisteredInterpreters(PythonEnvironment& env) {
+    for (HKEY root : {HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE}) {
+        for (const auto& company : Subkeys(root, L"Software\\Python")) {
+            const auto companyKey = L"Software\\Python\\" + company;
+            auto tags = Subkeys(root, companyKey);
+            std::sort(tags.rbegin(), tags.rend());
+            for (const auto& tag : tags) {
+                const auto installKey = companyKey + L"\\" + tag + L"\\InstallPath";
+                auto path = RegistryString(root, installKey, L"ExecutablePath");
+                if (path.empty()) {
+                    const auto directory = RegistryString(root, installKey, nullptr);
+                    if (!directory.empty()) path = (std::filesystem::path(directory) / L"python.exe").wstring();
+                }
+                if (!path.empty() && ExecutableFile(path) &&
+                    std::find(env.registered.begin(), env.registered.end(), path) == env.registered.end()) env.registered.push_back(path);
+            }
+        }
+    }
+}
 }
 PythonEnvironment ReadPythonEnvironment(const std::wstring& explicitPath) {
-    return {explicitPath,Environment(L"VIRTUAL_ENV"),Environment(L"CONDA_PREFIX"),Environment(L"PATH"),
+    PythonEnvironment result{explicitPath,Environment(L"VIRTUAL_ENV"),Environment(L"CONDA_PREFIX"),Environment(L"PATH"),
         RegisteredPath(HKEY_CURRENT_USER,L"Environment"),RegisteredPath(HKEY_LOCAL_MACHINE,L"SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment"),TerminalParent()};
+    RegisteredInterpreters(result);
+    return result;
 }
 PythonIdentity SelectPython(const PythonEnvironment& env) {
     PythonIdentity result;
@@ -67,11 +108,12 @@ PythonIdentity SelectPython(const PythonEnvironment& env) {
     else if(!env.virtualEnv.empty())required(std::filesystem::path(env.virtualEnv)/L"Scripts/python.exe",L"VIRTUAL_ENV");
     else if(!env.condaPrefix.empty())required(std::filesystem::path(env.condaPrefix)/L"python.exe",L"CONDA_PREFIX");
     else if(env.terminal) {result.origin=L"terminal PATH";result.executable=InPath(env.inheritedPath);}
-    else {result.origin=L"user PATH";result.executable=InPath(env.userPath);if(result.executable.empty()){result.origin=L"system PATH";result.executable=InPath(env.systemPath);}}
+    else {result.origin=L"user PATH";result.executable=InPath(env.userPath);if(result.executable.empty()){result.origin=L"system PATH";result.executable=InPath(env.systemPath);}
+        if(result.executable.empty() && !env.registered.empty()){result.origin=L"registered Python";result.executable=env.registered.front();}}
     if(result.executable.empty() && result.error.empty())result.error=L"Python not found. Select an interpreter with --python <python.exe>.";
     return result;
 }
-PythonIdentity DiscoverPython(const PythonEnvironment& env,const std::atomic<bool>& cancel) {
+static PythonIdentity ProbePythonIdentity(const PythonEnvironment& env,const std::atomic<bool>& cancel) {
     auto result=SelectPython(env);if(!result.error.empty() || cancel)return result;
     SECURITY_ATTRIBUTES security{sizeof(security),nullptr,TRUE};Handle reader,writer;
     if(!CreatePipe(&reader.value,&writer.value,&security,0) || !SetHandleInformation(reader,HANDLE_FLAG_INHERIT,0)){result.error=L"Cannot create Python discovery pipe";return result;}
@@ -106,5 +148,79 @@ PythonIdentity DiscoverPython(const PythonEnvironment& env,const std::atomic<boo
         result.executable=Utf16(value.at("executable").get<std::string>());
         if(result.bits!=64)result.error=L"Winip requires a 64-bit Python interpreter";
     } catch(...) {result.error=L"Selected executable did not return a valid Python identity";}
+    return result;
+}
+
+void CheckPythonPackages(PythonIdentity& identity, const std::atomic<bool>& cancel) {
+    if (!identity.error.empty() || identity.executable.empty() || cancel) return;
+    // Keep user-site visibility consistent with kernel launch, while excluding cwd
+    // from the probe. Imports run in a separate bounded process, never the UI.
+    const std::wstring script = LR"PY(import sys, os
+sys.path = [p for p in sys.path if p and os.path.abspath(p) != os.getcwd()]
+import json, importlib, importlib.util, contextlib, io, site, sysconfig
+missing, errors = [], []
+for package, module in [('ipython', 'IPython'), ('ipykernel', 'ipykernel'), ('jupyter_client', 'jupyter_client')]:
+    try:
+        if importlib.util.find_spec(module) is None:
+            missing.append(package)
+            continue
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            importlib.import_module(module)
+    except Exception as error:
+        errors.append(package + ': ' + type(error).__name__ + ': ' + str(error))
+virtual = sys.prefix != getattr(sys, 'base_prefix', sys.prefix) or os.path.isdir(os.path.join(sys.prefix, 'conda-meta'))
+result = dict(missing=missing, errors=errors, pip=importlib.util.find_spec('pip') is not None,
+    ensurepip=importlib.util.find_spec('ensurepip') is not None, virtual=virtual,
+    user_site=bool(site.ENABLE_USER_SITE), system_target=sysconfig.get_path('purelib'),
+    target=sysconfig.get_path('purelib') if virtual or not site.ENABLE_USER_SITE else site.getusersitepackages())
+print('WINIP_PACKAGES=' + json.dumps(result, ensure_ascii=True))
+)PY";
+    auto probe = ChildProcess::Run(identity.executable, {L"-B", L"-c", script}, cancel, 15000,
+        std::filesystem::path(identity.executable).parent_path().wstring());
+    identity.kernelReady = false;
+    identity.missingPackages.clear();
+    identity.packageError.clear();
+    try {
+        if (!probe.error.empty()) { identity.packageError = probe.error; return; }
+        const auto marker = probe.output.rfind("WINIP_PACKAGES=");
+        if (probe.exitCode || marker == std::string::npos) throw std::runtime_error("Package check did not return a valid result");
+        auto value = nlohmann::json::parse(probe.output.substr(marker + 15));
+        for (const auto& missing : value.at("missing")) identity.missingPackages.push_back(Utf16(missing.get<std::string>()));
+        for (const auto& error : value.at("errors")) identity.packageError += Utf16(error.get<std::string>()) + L"\n";
+        identity.pipAvailable = value.at("pip").get<bool>();
+        identity.ensurePipAvailable = value.at("ensurepip").get<bool>();
+        identity.virtualEnvironment = value.at("virtual").get<bool>();
+        identity.userSiteEnabled = value.at("user_site").get<bool>();
+        identity.installDirectory = Utf16(value.at("target").get<std::string>());
+        identity.systemInstallDirectory = Utf16(value.at("system_target").get<std::string>());
+        identity.kernelReady = identity.missingPackages.empty() && identity.packageError.empty();
+        if (identity.pipAvailable && !identity.kernelReady) {
+            auto pip = ChildProcess::Run(identity.executable, {L"-B", L"-m", L"pip", L"--version"}, cancel, 10000,
+                std::filesystem::path(identity.executable).parent_path().wstring());
+            identity.pipAvailable = pip.exitCode == 0 && pip.error.empty();
+        }
+    } catch (const std::exception& error) {
+        identity.packageError = Utf16(error.what()) + L"\n" + Utf16(probe.output);
+    }
+}
+
+PythonIdentity DiscoverPython(const PythonEnvironment& env, const std::atomic<bool>& cancel) {
+    auto result = ProbePythonIdentity(env, cancel);
+    CheckPythonPackages(result, cancel);
+    // Explicit/activated/terminal selections are contracts. Ordinary desktop
+    // discovery may choose an already working registered environment instead of
+    // asking the user to modify a different installation unnecessarily.
+    if (result.kernelReady || cancel || !env.explicitPath.empty() || !env.virtualEnv.empty() ||
+        !env.condaPrefix.empty() || env.terminal) return result;
+    for (const auto& path : env.registered) {
+        if (path == result.executable || cancel) continue;
+        auto candidateEnv = env;
+        candidateEnv.explicitPath = path;
+        auto candidate = ProbePythonIdentity(candidateEnv, cancel);
+        CheckPythonPackages(candidate, cancel);
+        candidate.origin = L"registered Python";
+        if (candidate.kernelReady) return candidate;
+        if (!result.error.empty() && candidate.error.empty()) result = std::move(candidate);
+    }
     return result;
 }

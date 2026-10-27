@@ -22,6 +22,9 @@
 #include "NotebookShortcuts.h"
 #include "Menus.h"
 #include "PythonDiscovery.h"
+#include "PythonSetup.h"
+#include "PythonSetupPlan.h"
+#include "KernelFooter.h"
 #include <commdlg.h>
 #include <shellapi.h>
 #include <windowsx.h>
@@ -35,14 +38,37 @@
 #include <thread>
 #include <array>
 #include <map>
+#include <cstring>
+#include <winver.h>
 
 namespace {
-constexpr UINT Loaded = WM_APP + 1, Failed = WM_APP + 2, KernelUpdate = WM_APP + 3, OperationFailed = WM_APP + 4, PreviewReady = WM_APP + 5;
+constexpr UINT Loaded = WM_APP + 1, Failed = WM_APP + 2, KernelUpdate = WM_APP + 3, OperationFailed = WM_APP + 4, PreviewReady = WM_APP + 5, PythonReady = WM_APP + 6, ShowKernelSetup = WM_APP + 7;
 constexpr int OpenId = 101;
 using Clock = std::chrono::steady_clock;
 struct MessageCount {uint64_t calls=0,wallNs=0,maxNs=0;};
+std::wstring LoadedApplicationVersion() {
+    // Read the mapped executable resource, not a file that an updater might
+    // have replaced while this instance is still running.
+    const auto module=GetModuleHandleW(nullptr);
+    const auto resource=FindResourceW(module,MAKEINTRESOURCEW(1),RT_VERSION);
+    if(!resource)return L"Unknown";
+    const auto size=SizeofResource(module,resource);
+    const auto bytes=static_cast<const unsigned char*>(LockResource(LoadResource(module,resource)));
+    constexpr wchar_t key[]=L"VS_VERSION_INFO";
+    constexpr size_t offset=(6+sizeof(key)+3)&~size_t(3);
+    if(!bytes || size<offset+sizeof(VS_FIXEDFILEINFO))return L"Unknown";
+    WORD header[3]{};std::memcpy(header,bytes,sizeof(header));
+    if(header[0]>size || header[0]<offset+sizeof(VS_FIXEDFILEINFO) || header[1]<sizeof(VS_FIXEDFILEINFO) ||
+        std::memcmp(bytes+6,key,sizeof(key))!=0)return L"Unknown";
+    VS_FIXEDFILEINFO version{};std::memcpy(&version,bytes+offset,sizeof(version));
+    if(version.dwSignature!=0xFEEF04BD)return L"Unknown";
+    return std::to_wstring(HIWORD(version.dwProductVersionMS))+L"."+
+        std::to_wstring(LOWORD(version.dwProductVersionMS))+L"."+std::to_wstring(HIWORD(version.dwProductVersionLS));
+}
 struct State {
     HWND window = nullptr;
+    std::wstring version=LoadedApplicationVersion();
+    KernelFooterRegion footerKernel;
     HANDLE frameReady=nullptr;
     std::atomic<uint64_t> windowMaxNs{0},windowOverBudget{0};
     HICON bigIcon=nullptr,smallIcon=nullptr;
@@ -60,8 +86,11 @@ struct State {
     std::unique_ptr<CellEditor> editor;
     std::unique_ptr<KernelController> kernel;
     std::deque<KernelEvent> kernelEvents;
-    std::wstring kernelStatus=L"Kernel not started", kernelRuntime, kernelBridge;
+    std::wstring kernelStatus=L"Checking Python…", kernelRuntime, kernelBridge;
     bool kernelProbe=false,navigatorProbe=false,imageProbe=false;
+    bool setupOpen=false, setupOnly=false;
+    std::wstring kernelFailure, kernelNotice;
+    std::atomic<int> footerHeight{28}, footerOverflow{0}, footerScroll{0};
     bool openErrorProbe=false,mediaProbe=false;
     Microsoft::WRL::ComPtr<ID3D11Device> uploadDevice;
     bool uploadDeviceReady=false;
@@ -167,6 +196,7 @@ void RequestOpen(std::wstring path) {
     app.path = std::move(path); ++app.request;
     app.status = L"Loading notebook..."; Dirty(); app.loadWake.notify_one();
 }
+int ViewportHeight() { return int(app.height/app.scale)-std::max(0,app.footerHeight.load()-28); }
 int HorizontalPage() {
     int width=int(app.width/app.scale), left=NotebookViewport::SideMargin(width), gutter=width<650?88:128;
     return std::max(1,width-2*left-gutter-46);
@@ -252,6 +282,7 @@ void PythonLoop() {
     if(app.stop)return;
     app.python=std::move(identity);app.pythonDone=true;
     app.pythonStatus=app.python.error.empty()?L"Python "+app.python.version+L" (64-bit) | "+app.kernelStatus:app.python.error;
+    PostMessageW(app.window,PythonReady,0,0);
     Dirty();
 }
 bool Unsaved() { // mutex held
@@ -269,16 +300,16 @@ void PublishEdit(bool reveal=true) { // UI thread, mutex held
         if(point.x<app.horizontal)app.horizontal=std::max(0,int(point.x));
         if(point.x>app.horizontal+page-5)app.horizontal=std::max(0,int(std::ceil(point.x-page+5)));
         const auto& cell=app.document->Cells()[app.editor->Selected()];
-        int top=200+cell.top+int(point.y)-app.scroll, bottom=int(app.height/app.scale)-38;
+        int top=200+cell.top+int(point.y)-app.scroll, bottom=ViewportHeight()-38;
         if(top<177)app.scroll=std::max(0,app.scroll+top-177);
         else if(top+25>bottom)app.scroll+=top+25-bottom;
     } else if(reveal && !app.document->Cells().empty()) {
         const auto& cell=app.document->Cells()[app.editor->Selected()];
         int top=190+cell.top-app.scroll;
         if(top<177)app.scroll=std::max(0,cell.top+13);
-        else if(top>int(app.height/app.scale)-80)app.scroll=std::max(0,cell.top-10);
+        else if(top>ViewportHeight()-80)app.scroll=std::max(0,cell.top-10);
     }
-    app.scroll=std::clamp(app.scroll,0,std::max(0,app.documentHeight.load()-std::max(22,int(app.height/app.scale)-232)));
+    app.scroll=std::clamp(app.scroll,0,std::max(0,app.documentHeight.load()-std::max(22,ViewportHeight()-232)));
     if(auto preview=app.editor->TakePreviewRequest()){app.previewRequest=std::move(preview);app.loadWake.notify_one();}
     app.status=DocumentStatus();Dirty();
     if(previous!=app.document->ContentRevision())PostMessageW(app.window,Loaded,0,0);
@@ -368,7 +399,10 @@ void InsertCell(bool above,bool markdown) { // UI thread, mutex held
     app.titleEdit.End();EditAction([&]{app.editor->InsertCell(index,markdown?L"markdown":L"code");});
 }
 void RunKernel(bool all,bool connectOnly=false) { // UI thread, mutex held
-    if(!app.pythonDone || !app.python.error.empty()) {app.status=L"Python unavailable: "+app.python.error;Dirty();return;}
+    if(!app.pythonDone) {app.status=L"Checking Python…";Dirty();return;}
+    if(!app.python.error.empty() || !app.python.kernelReady || !app.kernelFailure.empty()) {
+        PostMessageW(app.window,ShowKernelSetup,0,0);Dirty();return;
+    }
     if(!connectOnly && (!app.document || app.document->Cells().empty()))return;
     auto cwd=app.loadedPath.empty()?std::filesystem::path(app.kernelRuntime).parent_path():std::filesystem::path(app.loadedPath).parent_path();
     if(app.kernel->Submit(connectOnly?nullptr:app.document,app.editor->Selected(),all,app.python.executable,
@@ -379,7 +413,7 @@ void RunKernel(bool all,bool connectOnly=false) { // UI thread, mutex held
 void Shortcut(NotebookShortcuts::Action action) { // UI thread, mutex held
     using Action=NotebookShortcuts::Action;
     if(action==Action::RunAll){RunKernel(true);return;}
-    if(action==Action::Help) {app.menu=8;app.menuItem=0;Dirty();return;}
+    if(action==Action::Help) {app.menu=Menus::ShortcutsMenu;app.menuItem=0;Dirty();return;}
     if(action==Action::InsertAbove || action==Action::InsertBelow) {
         InsertCell(action==Action::InsertAbove,false);
         EditAction([&]{app.editor->End();});return;
@@ -540,6 +574,8 @@ void LoadLoop() {
 struct Canvas {
     Renderer& renderer;
     int width=0,height=0;
+    int footerHeight=28,footerOverflow=0;
+    KernelFooterRegion footerKernel;
     float scale=1;
     void Box(int x,int y,int w,int h,COLORREF color){renderer.Box(float(x),float(y),float(w),float(h),color);}
     void Text(const std::wstring& text,int x,int y,int w,int h,int size=17,
@@ -547,14 +583,21 @@ struct Canvas {
         renderer.Text(text,float(x),float(y),float(w),float(h),float(size),color,mono,bold,ellipsis);
     }
 };
-void Draw(Canvas& c, const Notebook* doc, int scroll, int horizontal, int contentWidth, int selected, const std::wstring& status, bool hdr, const TitleEditor& titleEdit,const CellEditView& editView,int menu,int menuItem,const std::vector<Menus::Item>& menuItems,const NotebookNavigator& navigator,uint64_t animationTime,bool kernelBusy,bool kernelConnected,const std::wstring& kernelStatus) {
+void Draw(Canvas& c, const Notebook* doc, int scroll, int horizontal, int contentWidth, int selected, const std::wstring& status, bool hdr, const TitleEditor& titleEdit,const CellEditView& editView,int menu,int menuItem,const std::vector<Menus::Item>& menuItems,const NotebookNavigator& navigator,uint64_t animationTime,bool kernelBusy,bool kernelConnected,const std::wstring& kernelStatus,const std::wstring& kernelNotice,int noticeScroll,const std::wstring& pythonVersion) {
     int w = int(c.width / c.scale), h = int(c.height / c.scale);
+    const int fullNoticeHeight=kernelNotice.empty()?0:int(std::ceil(c.renderer.WrappedTextHeight(kernelNotice,float(w-36),13)))+12;
+    const int noticeHeight=std::min(fullNoticeHeight,std::max(36,h-250));
+    const int footerHeight=28+noticeHeight;
+    c.footerHeight=footerHeight;
+    c.footerOverflow=fullNoticeHeight-noticeHeight;
+    const int footerScroll=std::clamp(noticeScroll,0,c.footerOverflow);
+    const int contentBottom=h-footerHeight-6;
     c.Box(0,0,w+1,h+1,RGB(238,238,238));
     int left = NotebookViewport::SideMargin(w), paperWidth = w-2*left;
     int gutter=w<650?88:128;
-    c.Box(left+3,171,paperWidth,h-196,RGB(221,221,221));
-    c.Box(left,168,paperWidth,h-196,RGB(255,255,255));
-    c.renderer.PushClip(float(left),177.f,float(w-left),float(h-34));
+    c.Box(left+3,171,paperWidth,h-footerHeight-168,RGB(221,221,221));
+    c.Box(left,168,paperWidth,h-footerHeight-168,RGB(255,255,255));
+    c.renderer.PushClip(float(left),177.f,float(w-left),float(contentBottom));
     if (!doc) {
         c.Text(L"Your notebook, on Windows.",left+24,232,paperWidth-48,50,30,RGB(35,35,35),false,true);
         c.Text(L"Open an .ipynb file to view its cells and saved text outputs.",left+24,299,paperWidth-48,50,18);
@@ -566,7 +609,7 @@ void Draw(Canvas& c, const Notebook* doc, int scroll, int horizontal, int conten
         for (auto it = first; it != cells.end(); ++it) {
             const auto& cell = *it;
             int y = 190 + cell.top - scroll;
-            if (y > h-34) break;
+            if (y > contentBottom) break;
             int index = (int)(it-cells.begin());
             if (index == selected) c.Box(left+14,y-4,4,cell.height+8,editView.id==cell.id?RGB(52,160,90):RGB(66,165,245));
             int sourceHeight = cell.sourceHeight;
@@ -586,7 +629,7 @@ void Draw(Canvas& c, const Notebook* doc, int scroll, int horizontal, int conten
                 if(cell.markdown) {
                     c.renderer.PreparedText(cell.markdown->Layout(),float(left+gutter-cellPan),float(y+8));
                     for(const auto& image:cell.markdown->Images())
-                        if(y+8+image.y+image.height>=177 && y+8+image.y<h-34)
+                        if(y+8+image.y+image.height>=177 && y+8+image.y<contentBottom)
                             c.renderer.Image(image.image,float(left+gutter-cellPan)+image.x,float(y+8)+image.y,image.width,image.height);
                 }
                 else c.Text(heading?cell.text->source.substr(2):cell.text->source,left+gutter-cellPan,y+8,std::max(contentWidth,paperWidth-gutter-30),sourceHeight+24,
@@ -598,7 +641,7 @@ void Draw(Canvas& c, const Notebook* doc, int scroll, int horizontal, int conten
                 if(cell.output) {
                     for(const auto& block:cell.output->Blocks()) {
                         float outputY=y+sourceHeight+34+block.top;
-                        if(outputY+block.height<177 || outputY>h-34)continue;
+                        if(outputY+block.height<177 || outputY>contentBottom)continue;
                         if(block.image)c.renderer.Image(block.image,float(left+gutter+12-cellPan),outputY,block.width,block.height);
                         else c.renderer.Text(block.text,float(left+gutter+12-cellPan),outputY,std::max(1.f,block.width+4),block.height+4,17,RGB(45,45,45),true,false);
                     }
@@ -615,7 +658,7 @@ void Draw(Canvas& c, const Notebook* doc, int scroll, int horizontal, int conten
         }
     }
     c.renderer.PopClip();
-    if(doc)navigator.Draw(c.renderer,*doc,NotebookNavigator::Geometry(w,h,doc->Height(),scroll),animationTime);
+    if(doc)navigator.Draw(c.renderer,*doc,NotebookNavigator::Geometry(w,h-footerHeight+28,doc->Height(),scroll),animationTime);
     c.Box(0,0,w,74,RGB(255,255,255));
     c.Text(L"winip",22,12,125,48,34,RGB(226,116,38),false,true);
     int titleAvailable=w-170;
@@ -630,10 +673,10 @@ void Draw(Canvas& c, const Notebook* doc, int scroll, int horizontal, int conten
     }
     c.Box(0,73,w,1,RGB(218,218,218));
     c.Box(0,74,w,32,RGB(247,247,247));
-    for(int i=0;i<8;++i) {
+    for(int i=0;i<Menus::MenuCount;++i) {
         int x=Menus::Left(i,w),slot=Menus::Left(i+1,w)-x;
         if(menu==i)c.Box(x,76,slot,28,RGB(224,233,241));
-        c.Text(Menus::Names[i],x+5,80,slot-8,22,14);
+        c.Text(Menus::Names[i],x+5,80,slot-8,22,Menus::TextSize(w));
     }
     c.Box(0,105,w,1,RGB(219,219,219));
     c.Box(0,106,w,48,RGB(255,255,255));
@@ -644,15 +687,34 @@ void Draw(Canvas& c, const Notebook* doc, int scroll, int horizontal, int conten
         c.Text(tool.command==Menus::RunAll && kernelBusy?L"↻ Run all":tool.label,tool.x+5,119,tool.width-10,25,14);
     }
     c.Box(0,153,w,1,RGB(218,218,218));
-    c.Box(0,h-28,w,28,RGB(250,250,250));
-    int badge=w>=650?210:72;
-    const int kernelWidth=w>=650?165:125;
-    const int kernelX=w-badge-kernelWidth-24;
-    c.Text(status,18,h-23,std::max(0,kernelX-28),24,13,RGB(85,85,85),false,false,true);
-    c.renderer.RoundedBox(float(kernelX),float(h-18),10,10,5,
-        !kernelConnected?RGB(145,145,145):kernelBusy?RGB(206,55,55):RGB(45,157,83));
-    c.Text(kernelStatus,kernelX+17,h-23,kernelWidth-17,24,13,RGB(85,85,85),false,false,true);
-    c.Text(w>=650?(hdr?L"HDR · scRGB  |  GPU":L"SDR · sRGB  |  GPU"):(hdr?L"HDR · GPU":L"SDR · GPU"),w-badge-10,h-23,badge,24,13,RGB(85,85,85));    if(menu>=0 && !menuItems.empty()) {
+    c.Box(0,h-footerHeight,w,footerHeight,RGB(250,250,250));
+    const auto label=KernelFooter::Label(kernelStatus,pythonVersion,kernelConnected);
+    int reservedKernel=0;
+    for(const auto* candidate:{L"Kernel not started",L"Kernel setup required",L"Kernel interrupting…",L"Kernel disconnected",L"Checking Python…"})
+        reservedKernel=std::max(reservedKernel,32+int(std::ceil(c.renderer.MeasureText(KernelFooter::Label(candidate,L"",false),10000,13,false))));
+    const auto idleLabel=KernelFooter::Label(L"Kernel idle",pythonVersion,true);
+    reservedKernel=std::max(reservedKernel,32+int(std::ceil(c.renderer.MeasureText(idleLabel,10000,13,false))));
+    reservedKernel=std::max(reservedKernel,32+int(std::ceil(c.renderer.MeasureText(label,10000,13,false))));
+    const auto documentStatus=L"|  "+status;
+    const int reservedDocument=std::max(280,24+int(std::ceil(c.renderer.MeasureText(documentStatus,10000,13,false))));
+    const int reservedRenderer=24+int(std::ceil(c.renderer.MeasureText(L"SDR · sRGB  |  GPU",10000,13,false)));
+    const auto columns=KernelFooter::Allocate(w-36,reservedKernel,reservedDocument,reservedRenderer);
+    c.footerKernel={18,h-28,18+columns.kernel,h,KernelFooter::CanConnect(kernelStatus,kernelConnected,kernelBusy)};
+    c.renderer.RoundedBox(18,float(h-18),10,10,5,
+        !kernelNotice.empty()?RGB(190,80,30):!kernelConnected?RGB(145,145,145):kernelBusy?RGB(206,55,55):RGB(45,157,83));
+    c.Text(label,35,h-23,columns.kernel-17,24,13,RGB(85,85,85));
+    if(columns.document)c.Text(documentStatus,18+columns.kernel,h-23,columns.document-12,24,13,RGB(85,85,85));
+    if(columns.renderer)c.Text(hdr?L"HDR · scRGB  |  GPU":L"SDR · sRGB  |  GPU",w-columns.renderer-18,h-23,columns.renderer,24,13,RGB(85,85,85));
+    if(noticeHeight) {
+        c.renderer.PushClip(0,float(h-footerHeight),float(w),float(h-28));
+        c.renderer.WrappedText(kernelNotice,18.f,float(h-footerHeight+6-footerScroll),float(w-36),13,RGB(145,50,20));
+        if(c.footerOverflow>0) {
+            c.Box(w-8,h-footerHeight+4,3,noticeHeight-8,RGB(215,215,215));
+            c.Box(w-8,h-footerHeight+4+(noticeHeight-24)*footerScroll/std::max(1,c.footerOverflow),3,16,RGB(145,85,50));
+        }
+        c.renderer.PopClip();
+    }
+    if(menu>=0 && !menuItems.empty()) {
         int x=Menus::PopupLeft(menu,w),row=Menus::RowHeight((int)menuItems.size(),h),popupHeight=row*(int)menuItems.size()+8;
         c.Box(x+3,109,314,popupHeight,RGB(206,206,206));c.Box(x,106,314,popupHeight,RGB(195,195,195));c.Box(x+1,107,312,popupHeight-2,RGB(255,255,255));
         for(int i=0;i<(int)menuItems.size();++i) {
@@ -666,7 +728,7 @@ void Draw(Canvas& c, const Notebook* doc, int scroll, int horizontal, int conten
 }
 
 std::shared_ptr<const NotebookImage> HitImage(int x,int y) { // mutex held; published geometry only
-    if(!app.document || y<177 || y>=int(app.height/app.scale)-34 || app.menu>=0)return {};
+    if(!app.document || y<177 || y>=ViewportHeight()-34 || app.menu>=0)return {};
     const int width=int(app.width/app.scale),left=NotebookViewport::SideMargin(width),gutter=width<650?88:128;
     const int contentY=y-190+app.scroll,page=HorizontalPage();
     const auto& cells=app.document->Cells();
@@ -691,7 +753,7 @@ void RenderLoop() {
         int selected = 0;
         int retries = 0;
         for (;;) {
-            int width,height,scroll,click,horizontal,contentWidth; float scale; bool refresh,forceSdr,kernelBusy,kernelConnected;std::wstring kernelStatus;
+            int width,height,scroll,click,horizontal,contentWidth,noticeScroll; float scale; bool refresh,forceSdr,kernelBusy,kernelConnected;std::wstring kernelStatus,kernelNotice,pythonVersion;
             NotebookNavigator navigator;uint64_t animationTime=0;
             std::wstring status, snapshot;TitleEditor titleEdit;CellEditView editView;int menu,menuItem;std::vector<Menus::Item> menuItems;
             uint64_t revision,imageViewRevision;ExpandedImages expanded;
@@ -710,12 +772,13 @@ void RenderLoop() {
                 expanded=app.expandedImages;imageUploads=app.imageUploads;imageViewRevision=app.imageViewRevision;
                 navigator=app.navigator;animationTime=GetTickCount64();
                 app.dirty=false; width=app.width; height=app.height; scroll=app.scroll;
-                forceSdr=app.forceSdr;kernelBusy=app.kernel->Busy();kernelConnected=app.kernel->Connected();kernelStatus=app.kernelStatus;
+                forceSdr=app.forceSdr;kernelBusy=app.kernel->Busy();kernelConnected=app.kernel->Connected();kernelStatus=app.kernelStatus;kernelNotice=app.kernelNotice;pythonVersion=app.python.version;
+                noticeScroll=app.footerScroll;
                 scale=app.scale; refresh=app.displayChanged; app.displayChanged=false;
-                click=app.clickY; app.clickY=-1; doc=app.document; status=app.status+L"  |  "+(app.python.error.empty()?L"Python "+app.python.version:app.python.error);titleEdit=app.titleEdit;menu=app.menu;menuItem=app.menuItem;
+                click=app.clickY; app.clickY=-1; doc=app.document; status=app.status;titleEdit=app.titleEdit;menu=app.menu;menuItem=app.menuItem;
                 horizontal=app.horizontal;contentWidth=app.documentWidth;
                 if(app.editor){editView=app.editor->View();selected=(int)app.editor->Selected();}
-                menuItems=Menus::Items(menu,doc!=nullptr,(titleEdit.Active() || editView.id!=0),app.fullscreen,app.pythonStatus,editView.id!=0,!app.forceSdr,app.settings->UseLastFolder());
+                menuItems=Menus::Items(menu,doc!=nullptr,(titleEdit.Active() || editView.id!=0),app.fullscreen,app.pythonStatus,editView.id!=0,!app.forceSdr,app.settings->UseLastFolder(),app.kernel->Connected(),app.kernel->Busy(),app.version);
                 auto settingsError=app.settings->Error();if(!settingsError.empty())status+=L" | "+settingsError;
                 revision=app.revision; snapshot=app.noSnapshots?L"":app.snapshotPath;app.snapshotPath.clear();
             }
@@ -726,7 +789,9 @@ void RenderLoop() {
             // A resize can race the UI snapshot; redraw using the actual surface extent.
             canvas.width=renderer.Width(); canvas.height=renderer.Height(); canvas.scale=scale;
             const auto sourceDocument=doc;
-            doc=flow.Prepare(doc,int(canvas.width/scale),int(canvas.height/scale),expanded,imageViewRevision);
+            const int fullNoticeHeight=kernelNotice.empty()?0:int(std::ceil(renderer.WrappedTextHeight(kernelNotice,float(canvas.width/scale-36),13)))+12;
+            const int noticeHeight=std::min(fullNoticeHeight,std::max(36,int(canvas.height/scale)-250));
+            doc=flow.Prepare(doc,int(canvas.width/scale),int(canvas.height/scale)-noticeHeight,expanded,imageViewRevision);
             if(doc) {
                 if(sourceDocument && doc!=sourceDocument && !sourceDocument->Cells().empty()) {
                     auto it=std::upper_bound(sourceDocument->Cells().begin(),sourceDocument->Cells().end(),scroll,[](int y,const Cell& cell){return y<cell.top;});
@@ -737,14 +802,17 @@ void RenderLoop() {
                 contentWidth=doc->ContentWidth();
                 const int logicalWidth=int(canvas.width/scale);
                 const int page=std::max(1,logicalWidth-2*NotebookViewport::SideMargin(logicalWidth)-(logicalWidth<650?88:128)-46);
-                scroll=std::clamp(scroll,0,std::max(0,doc->Height()-std::max(22,int(canvas.height/scale)-232)));
+                scroll=std::clamp(scroll,0,std::max(0,doc->Height()-std::max(22,int(canvas.height/scale)-noticeHeight-232)));
                 horizontal=std::clamp(horizontal,0,std::max(0,contentWidth-page));
             }
             renderer.SetImageUploads(imageUploads);
             renderer.Begin(scale);
-            Draw(canvas,doc.get(),scroll,horizontal,contentWidth,selected,status,renderer.IsHdr(),titleEdit,editView,menu,menuItem,menuItems,navigator,animationTime,kernelBusy,kernelConnected,kernelStatus);
+            Draw(canvas,doc.get(),scroll,horizontal,contentWidth,selected,status,renderer.IsHdr(),titleEdit,editView,menu,menuItem,menuItems,navigator,animationTime,kernelBusy,kernelConnected,kernelStatus,kernelNotice,noticeScroll,pythonVersion);
             Max(app.renderMaxNs,(uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now()-start).count());
             if (renderer.Present(snapshot)) {
+                {std::lock_guard<std::mutex> lock(app.mutex);app.footerKernel=canvas.footerKernel;}
+                app.footerHeight=canvas.footerHeight;
+                app.footerOverflow=canvas.footerOverflow;
                 if(doc) {
                     std::lock_guard<std::mutex> lock(app.mutex);
                     if(app.document==sourceDocument && app.revision==revision) {
@@ -1015,7 +1083,7 @@ void NavigatorProbe(HWND window) {
             if(!app.document || !app.pythonDone || (waiting && app.presentedRevision<waiting) || (phase==0 && app.presentedRevision<app.revision))return;
             document=app.document;
         }
-        auto geometry=NotebookNavigator::Geometry(int(app.width/app.scale),int(app.height/app.scale),document->Height(),app.scroll);
+        auto geometry=NotebookNavigator::Geometry(int(app.width/app.scale),ViewportHeight(),document->Height(),app.scroll);
         auto point=[&](float y){return MAKELPARAM(int((geometry.x+11)*app.scale),int(y*app.scale));};
         auto snapshot=[&](const wchar_t* name){std::lock_guard<std::mutex> lock(app.mutex);app.snapshotPath=app.probeDirectory+L"/"+name+L".bmp";Dirty();waiting=app.revision;};
         if(phase==0) {
@@ -1164,7 +1232,7 @@ void MediaProbe(HWND window) {
             }
             int w=int(app.width/app.scale),left=NotebookViewport::SideMargin(w),gutter=w<650?88:128;
             int x=left+gutter+int(image.x)+10,y=190+cell.top-app.scroll+8+int(image.y)+10;
-            require(y>=177 && y<int(app.height/app.scale)-34,"Image target is outside viewport");
+            require(y>=177 && y<ViewportHeight()-34,"Image target is outside viewport");
             const auto point=MAKELPARAM(int(x*app.scale),int(y*app.scale));
             SendMessageW(window,WM_LBUTTONDOWN,MK_LBUTTON,point);
             SendMessageW(window,WM_LBUTTONUP,0,point);
@@ -1264,7 +1332,7 @@ void ImageProbe(HWND window) {
             SetWindowPos(window,nullptr,0,0,1600,1300,SWP_NOMOVE|SWP_NOZORDER);++phase;return;
         }
         if(phase==6) {
-            {std::lock_guard<std::mutex> lock(app.mutex);app.scroll=std::max(0,app.documentHeight.load()-int(app.height/app.scale)+232);Dirty();}
+            {std::lock_guard<std::mutex> lock(app.mutex);app.scroll=std::max(0,app.documentHeight.load()-ViewportHeight()+232);Dirty();}
             snapshot(L"image-200dpi");++phase;return;
         }
         if(phase==7) {SendMessageW(window,WM_COMMAND,Menus::ToggleHdr,0);SaveDocument(window);waiting=app.revision;++phase;return;}
@@ -1465,8 +1533,8 @@ LRESULT CALLBACK WindowProc(HWND window,UINT message,WPARAM wp,LPARAM lp) {
         break;
     case WM_SYSKEYDOWN:
         if(wp==VK_RETURN && (lp&(1LL<<29))) {if(!(lp&(1LL<<30))){WindowTiming timing;ToggleFullscreen(window);}return 0;}
-        if(wp=='F' || wp=='E' || wp=='V' || wp=='I' || wp=='C' || wp=='K' || wp=='W' || wp=='H') {
-            std::lock_guard<std::mutex> lock(app.mutex);auto found=std::wstring(L"FEVICKWH").find((wchar_t)wp);app.menu=(int)found;app.menuItem=0;Dirty();return 0;
+        if(wp=='F' || wp=='E' || wp=='V' || wp=='I' || wp=='C' || wp=='K' || wp=='W' || wp=='S' || wp=='H') {
+            std::lock_guard<std::mutex> lock(app.mutex);auto found=std::wstring(L"FEVICKWSH").find((wchar_t)wp);app.menu=(int)found;app.menuItem=0;Dirty();return 0;
         }
         break;
     case WM_SYSCHAR: if(wp==VK_RETURN || std::wstring(L"fevickwh").find((wchar_t)wp)!=std::wstring::npos)return 0;break;
@@ -1494,7 +1562,7 @@ LRESULT CALLBACK WindowProc(HWND window,UINT message,WPARAM wp,LPARAM lp) {
         // Modern composition prepared this geometry before the native transaction.
         if(app.width==width && app.height==height && app.presentedRevision>=app.revision)return 0;
         app.width=width;app.height=height;
-        int maxScroll=std::max(0,app.documentHeight.load()-int(app.height/app.scale)+232);
+        int maxScroll=std::max(0,app.documentHeight.load()-ViewportHeight()+232);
         app.scroll=std::clamp(app.scroll,0,maxScroll); Dirty();
         }
         UpdateHorizontal(window);CompleteResizeFrame();return 0;
@@ -1520,9 +1588,9 @@ LRESULT CALLBACK WindowProc(HWND window,UINT message,WPARAM wp,LPARAM lp) {
         if(message==WM_KEYDOWN) {
             InputTiming timing;std::lock_guard<std::mutex> lock(app.mutex);
             if(app.menu>=0) {
-                auto items=Menus::Items(app.menu,app.document!=nullptr,(app.titleEdit.Active() || (app.editor && app.editor->Active())),app.fullscreen,app.pythonStatus,app.editor && app.editor->Active(),!app.forceSdr,app.settings->UseLastFolder());
+                auto items=Menus::Items(app.menu,app.document!=nullptr,(app.titleEdit.Active() || (app.editor && app.editor->Active())),app.fullscreen,app.pythonStatus,app.editor && app.editor->Active(),!app.forceSdr,app.settings->UseLastFolder(),app.kernel->Connected(),app.kernel->Busy(),app.version);
                 if(wp==VK_ESCAPE)app.menu=-1;
-                else if(wp==VK_LEFT || wp==VK_RIGHT){app.menu=(std::min(7,app.menu)+(wp==VK_LEFT?7:1))%8;app.menuItem=0;}
+                else if(wp==VK_LEFT || wp==VK_RIGHT){app.menu=(std::min(Menus::MenuCount-1,app.menu)+(wp==VK_LEFT?Menus::MenuCount-1:1))%Menus::MenuCount;app.menuItem=0;}
                 else if(wp==VK_UP || wp==VK_DOWN){int count=(int)items.size();for(int i=0;i<count;++i){app.menuItem=(app.menuItem+count+(wp==VK_UP?-1:1))%count;if(items[app.menuItem].enabled)break;}}
                 else if(wp==VK_RETURN && !items.empty() && items[app.menuItem].enabled){PostMessageW(window,WM_COMMAND,items[app.menuItem].command,0);app.menu=-1;}
                 Dirty();return 0;
@@ -1565,7 +1633,14 @@ LRESULT CALLBACK WindowProc(HWND window,UINT message,WPARAM wp,LPARAM lp) {
         if(message==WM_MOUSEWHEEL && (GET_KEYSTATE_WPARAM(wp)&MK_SHIFT)) {ScrollHorizontal(window,-1,-GET_WHEEL_DELTA_WPARAM(wp)*66/WHEEL_DELTA);return 0;}
         if(message==WM_KEYDOWN && (wp==VK_LEFT || wp==VK_RIGHT)) {ScrollHorizontal(window,wp==VK_LEFT?SB_LINELEFT:SB_LINERIGHT);return 0;}
         std::lock_guard<std::mutex> lock(app.mutex);
-        int delta=0, page=std::max(22,int(app.height/app.scale)-232);
+        if(message==WM_MOUSEWHEEL && app.footerOverflow>0) {
+            POINT pointer{GET_X_LPARAM(lp),GET_Y_LPARAM(lp)};ScreenToClient(window,&pointer);
+            if(pointer.y/app.scale>=app.height/app.scale-app.footerHeight.load()) {
+                app.footerScroll=std::clamp(app.footerScroll.load()-GET_WHEEL_DELTA_WPARAM(wp)*44/WHEEL_DELTA,0,app.footerOverflow.load());
+                Dirty();return 0;
+            }
+        }
+        int delta=0, page=std::max(22,ViewportHeight()-232);
         if(message==WM_MOUSEWHEEL) delta=-GET_WHEEL_DELTA_WPARAM(wp)*66/WHEEL_DELTA;
         else if(wp==VK_NEXT) delta=page; else if(wp==VK_PRIOR) delta=-page;
         else if(wp==VK_DOWN) delta=44; else if(wp==VK_UP) delta=-44;
@@ -1589,6 +1664,10 @@ LRESULT CALLBACK WindowProc(HWND window,UINT message,WPARAM wp,LPARAM lp) {
         int x=int(GET_X_LPARAM(lp)/app.scale), y=int(GET_Y_LPARAM(lp)/app.scale);
         int width=int(app.width/app.scale),height=int(app.height/app.scale);
         app.shortcuts.Reset();
+        if(app.menu<0 && KernelFooter::HitConnect(app.footerKernel,x,y) &&
+            KernelFooter::CanConnect(app.kernelStatus,app.kernel->Connected(),app.kernel->Busy())) {
+            app.menu=-1;RunKernel(false,true);return 0;
+        }
         if(HitImage(x,y)) {
             // Select without entering source, preserving the double-click image target.
             const auto& cells=app.document->Cells();
@@ -1598,18 +1677,18 @@ LRESULT CALLBACK WindowProc(HWND window,UINT message,WPARAM wp,LPARAM lp) {
             return 0;
         }
         if(app.document && app.menu<0) {
-            auto geometry=NotebookNavigator::Geometry(width,height,app.document->Height(),app.scroll);
+            auto geometry=NotebookNavigator::Geometry(width,height-app.footerHeight.load()+28,app.document->Height(),app.scroll);
             if(NotebookNavigator::Hit(float(x),float(y),geometry)) {
                 EditAction([&]{app.editor->End();},false);
-                geometry=NotebookNavigator::Geometry(width,height,app.document->Height(),app.scroll);
+                geometry=NotebookNavigator::Geometry(width,height-app.footerHeight.load()+28,app.document->Height(),app.scroll);
                 app.navigator.Begin(float(y),geometry,GetTickCount64());
                 app.scroll=app.navigator.Drag(float(y),geometry);SetCapture(window);Dirty();return 0;
             }
         }
-        if(app.editor->Active() && (y<177 || y>=height-34))EditAction([&]{app.editor->End();},false);
+        if(app.editor->Active() && (y<177 || y>=height-app.footerHeight.load()-6))EditAction([&]{app.editor->End();},false);
         if(y>=74 && y<106){app.menu=Menus::Hit(x,width);app.menuItem=0;Dirty();return 0;}
         if(app.menu>=0) {
-            auto items=Menus::Items(app.menu,app.document!=nullptr,(app.titleEdit.Active() || (app.editor && app.editor->Active())),app.fullscreen,app.pythonStatus,app.editor && app.editor->Active(),!app.forceSdr,app.settings->UseLastFolder());
+            auto items=Menus::Items(app.menu,app.document!=nullptr,(app.titleEdit.Active() || (app.editor && app.editor->Active())),app.fullscreen,app.pythonStatus,app.editor && app.editor->Active(),!app.forceSdr,app.settings->UseLastFolder(),app.kernel->Connected(),app.kernel->Busy(),app.version);
             int left=Menus::PopupLeft(app.menu,width),row=Menus::RowHeight((int)items.size(),height),index=(y-110)/row;
             if(x>=left && x<left+314 && y>=110 && index<(int)items.size()) {
                 if(items[index].enabled){PostMessageW(window,WM_COMMAND,items[index].command,0);app.menu=-1;}
@@ -1623,7 +1702,7 @@ LRESULT CALLBACK WindowProc(HWND window,UINT message,WPARAM wp,LPARAM lp) {
             int command=NotebookToolbar::Hit(x,width,kind);
             if(command)PostMessageW(window,WM_COMMAND,command,0);
         }
-        else if(y>=177 && y<int(app.height/app.scale)-34) {
+        else if(y>=177 && y<ViewportHeight()-34) {
             app.clickY=y;
             if(app.document) {
                 int contentY=y-190+app.scroll,left=NotebookViewport::SideMargin(width),gutter=width<650?88:128;
@@ -1668,13 +1747,13 @@ LRESULT CALLBACK WindowProc(HWND window,UINT message,WPARAM wp,LPARAM lp) {
     case WM_MOUSELEAVE: {
         std::lock_guard<std::mutex> lock(app.mutex);
         app.mouseTracking=false;
-        auto geometry=NotebookNavigator::Geometry(int(app.width/app.scale),int(app.height/app.scale),app.documentHeight,app.scroll);
+        auto geometry=NotebookNavigator::Geometry(int(app.width/app.scale),ViewportHeight(),app.documentHeight,app.scroll);
         if(app.navigator.Hover(-1,-1,geometry))Dirty();return 0;
     }
     case WM_MOUSEMOVE: {
         {
             std::lock_guard<std::mutex> lock(app.mutex);
-            auto geometry=NotebookNavigator::Geometry(int(app.width/app.scale),int(app.height/app.scale),app.documentHeight,app.scroll);
+            auto geometry=NotebookNavigator::Geometry(int(app.width/app.scale),ViewportHeight(),app.documentHeight,app.scroll);
             if(app.navigator.Hover(GET_X_LPARAM(lp)/app.scale,GET_Y_LPARAM(lp)/app.scale,geometry))Dirty();
             if(!app.mouseTracking) {
                 TRACKMOUSEEVENT track{sizeof(track),TME_LEAVE,window,0};
@@ -1684,7 +1763,7 @@ LRESULT CALLBACK WindowProc(HWND window,UINT message,WPARAM wp,LPARAM lp) {
         if(GetCapture()!=window || !(wp&MK_LBUTTON))break;
         InputTiming timing;std::lock_guard<std::mutex> lock(app.mutex);
         if(app.navigator.Held() && app.document) {
-            auto geometry=NotebookNavigator::Geometry(int(app.width/app.scale),int(app.height/app.scale),app.document->Height(),app.scroll);
+            auto geometry=NotebookNavigator::Geometry(int(app.width/app.scale),ViewportHeight(),app.document->Height(),app.scroll);
             int next=app.navigator.Drag(GET_Y_LPARAM(lp)/app.scale,geometry);
             if(next!=app.scroll){app.scroll=next;Dirty();}return 0;
         }
@@ -1713,10 +1792,59 @@ LRESULT CALLBACK WindowProc(HWND window,UINT message,WPARAM wp,LPARAM lp) {
         for(auto& event:events) {
             if(event.generation!=app.kernel->Generation())continue;
             app.kernelStatus=event.status;
+            if(event.failed) {
+                app.footerScroll=0;
+                app.kernelFailure=event.status;
+                app.kernelNotice=event.status.substr(0,event.status.find(L"\n\n"));
+                if(app.probeDirectory.empty())PostMessageW(window,ShowKernelSetup,0,0);
+            }
             if(event.cellId)EditAction([&]{app.editor->ApplyExecution(event.cellId,event.result);},false);
         }
         app.pythonStatus=L"Python "+app.python.version+L" (64-bit) | "+app.kernelStatus;
         app.status=DocumentStatus();Dirty();return 0;
+    }
+    case PythonReady: {
+        bool advisory;
+        {std::lock_guard<std::mutex> lock(app.mutex);
+            advisory=!app.python.error.empty() || !app.python.kernelReady;
+            app.kernelNotice.clear();
+            if(advisory) {
+                app.kernelStatus=L"Kernel setup required";
+                app.kernelNotice=!app.python.error.empty()?app.python.error:L"Cannot start kernel. Missing or unusable IPython kernel support.";
+            } else app.kernelStatus=L"Kernel not started";
+            Dirty();
+        }
+        if(advisory && app.probeDirectory.empty())PostMessageW(window,ShowKernelSetup,0,0);
+        else if(app.setupOnly)PostMessageW(window,WM_CLOSE,0,0);
+        return 0;
+    }
+    case ShowKernelSetup: {
+        if(app.setupOpen || !app.pythonDone || !app.probeDirectory.empty())return 0;
+        PythonIdentity identity;std::wstring failure;
+        {std::lock_guard<std::mutex> lock(app.mutex);
+            if(app.kernel->Busy())return 0;
+            identity=app.python;failure=app.kernelFailure;app.setupOpen=true;
+        }
+        const int action=PythonSetup::Show(window,identity,ReadPythonEnvironment(app.pythonOverride),
+            std::filesystem::path(app.kernelBridge).parent_path().wstring(),failure);
+        {std::lock_guard<std::mutex> lock(app.mutex);
+            app.python=identity;app.setupOpen=false;
+            if(identity.kernelReady) {
+                if(action==IDOK)app.kernelFailure.clear();
+                if(app.kernelFailure.empty())app.kernelNotice.clear();
+                app.kernelStatus=!app.kernelFailure.empty()?L"Kernel failed":app.kernel->Connected()?L"Kernel idle":L"Kernel not started";
+            } else {
+                app.kernelStatus=L"Kernel setup required";
+                app.kernelNotice=identity.error.empty()?PythonSetupPlan::Description(PythonSetupPlan::Stage(identity)):identity.error;
+            }
+            app.pythonStatus=identity.error.empty()?L"Python "+identity.version+L" | "+app.kernelStatus:identity.error;
+            Dirty();
+            if(action==IDOK) {app.setupOnly=false;RunKernel(false,true);}
+        }
+        if(action==IDOK)ShowWindow(window,SW_SHOWMAXIMIZED);
+        if(action==1004)PostMessageW(window,WM_COMMAND,Menus::SelectInterpreter,0);
+        else if(app.setupOnly)PostMessageW(window,WM_CLOSE,0,0);
+        return 0;
     }
     case WM_COMMAND:
         if(LOWORD(wp)==Menus::SelectInterpreter) {
@@ -1728,8 +1856,8 @@ LRESULT CALLBACK WindowProc(HWND window,UINT message,WPARAM wp,LPARAM lp) {
             if(!GetOpenFileNameW(&dialog))return 0;
             if(app.pythonThread.joinable())app.pythonThread.join();
             {std::lock_guard<std::mutex> lock(app.mutex);
-                app.kernel->Stop();app.kernelStatus=L"Kernel disconnected";
-                app.pythonDone=false;app.pythonOverride=path;app.pythonStatus=L"Checking interpreter…";Dirty();
+                app.kernel->Stop();app.kernelStatus=L"Checking Python…";
+                app.kernelFailure.clear();app.kernelNotice.clear();app.pythonDone=false;app.pythonOverride=path;app.pythonStatus=L"Checking interpreter…";Dirty();
             }
             app.pythonThread=std::thread(PythonLoop);return 0;
         }
@@ -1760,9 +1888,9 @@ LRESULT CALLBACK WindowProc(HWND window,UINT message,WPARAM wp,LPARAM lp) {
                 if(app.kernel->Interrupt())app.kernelStatus=L"Kernel interrupting…";
                 break;
             case Menus::RestartKernel:
-                if(app.kernel->Restart())app.kernelStatus=L"Kernel restarting…";else RunKernel(false,true);
+                if(app.kernel->Restart())app.kernelStatus=L"Kernel restarting…";else PostMessageW(window,ShowKernelSetup,0,0);
                 break;
-            case Menus::Settings:app.menu=11;app.menuItem=0;break;
+            case Menus::Settings:app.menu=Menus::SettingsMenu;app.menuItem=0;break;
             case Menus::ToggleHdr:app.forceSdr=!app.forceSdr;app.settings->SetHdrEnabled(!app.forceSdr);app.displayChanged=true;break;
             case Menus::ToggleOpenFolder:app.settings->SetUseLastFolder(!app.settings->UseLastFolder());break;
             }
@@ -1774,8 +1902,8 @@ LRESULT CALLBACK WindowProc(HWND window,UINT message,WPARAM wp,LPARAM lp) {
             case Menus::RunCell:Shortcut(NotebookShortcuts::Action::RenderStay);break;
             case Menus::RunAll:RunKernel(true);break;
             case Menus::ConnectKernel:RunKernel(false,true);break;
-            case Menus::StopKernel:app.kernel->Stop();app.kernelStatus=L"Kernel stopped";app.pythonStatus=L"Python "+app.python.version+L" | "+app.kernelStatus;app.status=DocumentStatus();Dirty();break;
-            case Menus::CellType:app.menu=10;app.menuItem=0;Dirty();break;
+            case Menus::StopKernel:if(!app.kernel->Busy() && !app.kernel->Connected())break;app.kernel->Stop();app.kernelStatus=L"Kernel stopped";app.pythonStatus=L"Python "+app.python.version+L" | "+app.kernelStatus;app.status=DocumentStatus();Dirty();break;
+            case Menus::CellType:app.menu=Menus::CellTypeMenu;app.menuItem=0;Dirty();break;
             case Menus::ToCode:case Menus::ToMarkdown:EditAction([&]{app.editor->ChangeKind(LOWORD(wp)==Menus::ToCode?L"code":L"markdown");});break;
             }
             return 0;
@@ -1794,7 +1922,7 @@ LRESULT CALLBACK WindowProc(HWND window,UINT message,WPARAM wp,LPARAM lp) {
         if(LOWORD(wp)==Menus::Rename){std::lock_guard<std::mutex> lock(app.mutex);BeginTitleEdit();}
         else if(LOWORD(wp)==Menus::Fullscreen){WindowTiming timing;ToggleFullscreen(window);}
         else if(LOWORD(wp)==Menus::SelectAll){std::lock_guard<std::mutex> lock(app.mutex);if(app.titleEdit.Active()){app.titleEdit.SelectAll();Dirty();}else EditAction([&]{app.editor->SelectAll();});}
-        else if(LOWORD(wp)==Menus::Shortcuts || LOWORD(wp)==Menus::About){std::lock_guard<std::mutex> lock(app.mutex);app.menu=LOWORD(wp)==Menus::Shortcuts?8:9;app.menuItem=0;Dirty();}
+        else if(LOWORD(wp)==Menus::Shortcuts || LOWORD(wp)==Menus::About){std::lock_guard<std::mutex> lock(app.mutex);app.menu=LOWORD(wp)==Menus::Shortcuts?Menus::ShortcutsMenu:Menus::AboutMenu;app.menuItem=0;Dirty();}
         else if(LOWORD(wp)==Menus::Close)PostMessageW(window,WM_CLOSE,0,0);
         else if(LOWORD(wp)==OpenId) OpenDialog(window);
         else if(LOWORD(wp)==IDM_EXIT) PostMessageW(window,WM_CLOSE,0,0);
@@ -1891,6 +2019,7 @@ int APIENTRY wWinMain(HINSTANCE instance,HINSTANCE,LPWSTR,int) {
         if(std::wstring(argv[i])==L"--metrics" && i+1<argc) app.metricsPath=argv[++i];
         else if(std::wstring(argv[i])==L"--snapshot" && i+1<argc) app.snapshotPath=argv[++i];
         else if(std::wstring(argv[i])==L"--python" && i+1<argc) app.pythonOverride=argv[++i];
+        else if(std::wstring(argv[i])==L"--setup-python") app.setupOnly=true;
         else if(std::wstring(argv[i])==L"--no-snapshots") app.noSnapshots=true;
         else if(std::wstring(argv[i])==L"--sdr") {app.forceSdr=true;renderOverride=true;}
         else if(std::wstring(argv[i])==L"--hdr") {app.forceSdr=false;renderOverride=true;}
@@ -1919,7 +2048,7 @@ int APIENTRY wWinMain(HINSTANCE instance,HINSTANCE,LPWSTR,int) {
     SetWindowPos(app.window,nullptr,monitor.rcWork.left+(workWidth-restoredWidth)/2,monitor.rcWork.top+(workHeight-restoredHeight)/2,
         restoredWidth,restoredHeight,SWP_NOZORDER|SWP_NOACTIVATE);
     // Diagnostic layout probes deliberately use a restored window.
-    ShowWindow(app.window,app.probeDirectory.empty() || app.interactionProbe?SW_SHOWMAXIMIZED:SW_SHOWNOACTIVATE);
+    if(!app.setupOnly)ShowWindow(app.window,app.probeDirectory.empty() || app.interactionProbe?SW_SHOWMAXIMIZED:SW_SHOWNOACTIVATE);
     app.kernel=std::make_unique<KernelController>([](KernelEvent event){
         std::unique_lock<std::mutex> lock(app.mutex);
         app.kernelWake.wait(lock,[]{return app.stop || app.kernelEvents.size()<8;});

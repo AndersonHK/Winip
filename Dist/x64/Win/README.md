@@ -1,24 +1,26 @@
-# Windows x64 installer
+# Winip 0.3.3 — Windows x86-64
 
-`Winip-0.2.2-x64.msi` is the current installer. It includes
-the application, private fonts, Python kernel bridge and applicable license
-notices. Python and notebook packages are supplied separately by the user.
+`Winip-0.3.3-x64.msi` is the current 64-bit x86 Windows installer. It includes the
+application, private fonts, kernel bridge, guided setup helper and license notices.
+The MSI checks Python/kernel readiness automatically and offers skippable setup
+with explicit destination confirmation. A working kernel does not require pip.
 
-Only this guide is tracked in Git. Generated MSI/checksum files are ignored; upload them as release assets when publishing. Build locally if no release has been uploaded.
+Only this guide is tracked in Git. The MSI and `SHA256SUMS.txt` are generated release
+assets, distributed separately from source. If assets are not available, build
+from the repository. The installer needs administrator permission and is unsigned.
 
-The installer requires administrator permission and is currently unsigned.
-Verify its SHA-256 against `SHA256SUMS.txt` with:
+Verify the local package from the repository root:
 
 ```powershell
-Get-FileHash .\Dist\x64\Win\Winip-0.2.2-x64.msi -Algorithm SHA256
+Get-FileHash .\Dist\x64\Win\Winip-0.3.3-x64.msi -Algorithm SHA256
+Get-Content .\Dist\x64\Win\SHA256SUMS.txt
 ```
 
-From the repository root, `python Scripts/package.py` rebuilds the version from
-`VERSION`, checks the package, and copies only the completed MSI and checksum
-here. Compiler products, payload staging, WiX debug databases and validation
-extracts stay in ignored `Out/Packaging/`. Retire the previous MSI from this
-directory when publishing a newer version; keep historical releases as release
-assets rather than accumulating them in the source tree.
+`python Scripts/package.py` builds the version in `VERSION`, verifies the payload,
+and replaces the current MSI/checksum only after success. Keep only the current
+release in this folder. Build intermediates and useful prior-release comparison
+packages belong in ignored `Out/Packaging/`, not alongside the distributable.
 
-See [the main README](../../../README.md) for usage and
-[packaging documentation](../../../Docs/Packaging.md) for build requirements.
+See the [main README](../../../README.md), [packaging guide](../../../Docs/Packaging.md)
+and [release summary](../../../Docs/Checkpoint-10.md). Linux and macOS packages are
+not currently available; future builds must identify their OS and CPU architecture.

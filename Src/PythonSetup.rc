@@ -1,0 +1,21 @@
+#include "Resource.h"
+#include <windows.h>
+
+IDD_PYTHON_SETUP DIALOGEX 0, 0, 440, 340
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Winip - Notebook setup"
+FONT 9, "Noto Sans"
+BEGIN
+    LTEXT "Notebook setup", 1010, 14, 12, 412, 25
+    LTEXT "", 1011, 14, 43, 412, 34
+    CONTROL "Install Jupyter kernel support using pip (recommended)", 1005, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 14, 84, 412, 30
+    EDITTEXT 1000, 14, 124, 412, 126, ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL | WS_TABSTOP
+    CONTROL "Install into my user packages (recommended)", 1006, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 14, 256, 412, 18
+    PUSHBUTTON "Official instructions", 1002, 14, 283, 126, 20
+    PUSHBUTTON "Check again", 1003, 148, 283, 126, 20
+    PUSHBUTTON "Select interpreter", 1004, 282, 283, 144, 20
+    PUSHBUTTON "Back", 1007, 14, 314, 76, 20
+    DEFPUSHBUTTON "Next", 1001, 326, 314, 100, 20
+    PUSHBUTTON "Start kernel", IDOK, 326, 314, 100, 20
+    PUSHBUTTON "Skip setup", IDCANCEL, 216, 314, 100, 20
+END

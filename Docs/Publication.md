@@ -45,34 +45,23 @@ index entries. This initial root snapshot is indexed from the cleaned source
 without carrying forward old path entries. No persistent Git case-setting change
 is needed.
 
-## Preparation completed on 2026-10-16
+## Publication baseline and release checks
 
-The review covered all 295 files tracked at the starting revision, including IDE
-binary databases, UTF-16 resources, notebooks with embedded images, vendored
-sources, fonts, artwork, historical reports and project scripts. It also scanned
-582 reachable historical blobs and 21 commits. Media metadata and previews,
-font name/license tables, dependency hashes, and the extracted MSI payload were
-inspected separately. Upstream source/font bytes were preserved.
+The 2026-10-16 publication pass removed private IDE/build data from the public
+snapshot, retained required licenses/assets, and placed generated products under
+`Out/`, `Artifacts/` and `Dist/`. The original development history remains local
+under the archive branches described below.
 
-The working tree now removes tracked IDE data, private reference screenshots and
-raw historical reports. Public summaries anonymize profile/interpreter paths,
-private notebook names and device identities. Local archives retain needed
-historical context without adding it to Git. Build outputs use the standardized
-`Out/` layout; the local installer/checksum use `Dist/x64/Win/`.
+For release 0.3.3, review the complete source/test/documentation change set, run
+applicable [validation](Validation.md#release-033-checks), verify MSI payload/ICE
+and checksum, and keep only the current release in `Dist/x64/Win/`. Write an ignored
+size/hash/reason manifest before retiring old distribution files. Preserve useful
+upgrade-comparison installers under `Out/Packaging/` and lightweight reports under
+`Artifacts/`; do not add those files to Git.
 
-Release and Debug model suites passed with the renamed paths, including 144 image
-and 160 text-cache GPU comparisons in each configuration. The Release application
-and MSI built successfully. Package checks passed for payload/license hashes,
-icons, version identity, installer UI routing, native AppPaths, compatibility with
-0.2.1 components, and native MSI ICE with warnings treated as errors. No live
-installation, upgrade, uninstall, new window interaction or real-kernel acceptance
-is claimed by this maintenance pass. It changes packaging/layout/documentation,
-not notebook behavior.
-
-The local cleanup removed obsolete build trees and byte-identical generated
-artifacts, with a size/hash/reason manifest in `Out/Publication/Cleanup.json`.
-Private notebooks and maintained fixtures were preserved. Detailed audit and
-package reports remain ignored local files, not committed evidence.
+A source commit/push is distinct from uploading GitHub release assets. Report each
+operation separately and verify the remote branch after pushing. Only create or
+publish a hosted release when that action is requested.
 
 ## Public history and local archive
 
@@ -104,7 +93,7 @@ with `git ls-remote --heads origin` to confirm only the public branch was sent.
 Before publishing any future branch, audit its files and ancestry. A clean working
 tree alone does not establish that its history is safe to publish.
 
-The installer remains an unpublished 0.2.2 candidate, with complete notices and
-no build-machine PDB path. Version handling after a public release follows
-[Releases.md](Releases.md). Upload the tested MSI and checksum as release assets;
-do not add them to Git merely because they are located under `Dist/`.
+The current installer is **0.3.3 — Windows x86-64**, with complete notices and no
+build-machine PDB path. Its MSI and checksum are separate generated release assets,
+not Git source. Follow [Releases.md](Releases.md) for subsequent version changes;
+never force-add installer binaries simply because they are in `Dist/`.

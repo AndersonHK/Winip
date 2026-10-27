@@ -8,6 +8,8 @@ struct KernelEvent {
     uint64_t generation = 0;
     uint64_t cellId = 0;
     Cell result;
+    bool failed = false;
+    bool startupFailure = false;
 };
 
 // Owns its worker, bridge pipes and process job. No Python or pipe IO on UI.

@@ -11,6 +11,12 @@
     <SetProperty Id="ARPINSTALLLOCATION" Value="[INSTALLFOLDER]" After="CostFinalize" Sequence="execute" />
     <Property Id="ARPNOMODIFY" Value="1" />
     <Property Id="ASSOCIATE_IPYNB" Value="1" Secure="yes" />
+    <CustomAction Id="DetectKernelSupport" BinaryRef="WinipShellActions" DllEntry="DetectKernelSupport" Return="check" />
+    <CustomAction Id="CompleteKernelSetup" BinaryRef="WinipShellActions" DllEntry="CompleteKernelSetup" Return="check" />
+    <InstallUISequence>
+      <Custom Action="DetectKernelSupport" After="CostFinalize" Condition="NOT Installed AND UILevel = 5" />
+      <Custom Action="CompleteKernelSetup" After="ExecuteAction" Condition="NOT Installed AND WINIP_SETUP_REQUESTED = 1 AND UILevel = 5" />
+    </InstallUISequence>
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
     <Property Id="INSTALLFOLDER" Secure="yes">
       <RegistrySearch Id="PreviousInstallFolder" Root="HKLM" Key="Software\Winip" Name="InstallFolder" Type="raw" Bitness="always64" />

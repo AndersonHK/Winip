@@ -80,7 +80,7 @@ def main():
         directory = element('Directory', Id='Winip' + folder.title() + 'Folder', Name=folder)
         directory_ref.append(directory)
         names = ([path.name for path in (ROOT / 'Assets/Fonts').iterdir() if path.is_file()]
-                 if folder == 'fonts' else ['kernel_bridge.py'] if folder == 'runtime' else LICENSE_FILES)
+                 if folder == 'fonts' else ['kernel_bridge.py', 'install_python.ps1'] if folder == 'runtime' else LICENSE_FILES)
         for path in sorted(source / name for name in names):
             if not path.is_file():
                 raise RuntimeError('Unexpected nested payload: ' + str(path))

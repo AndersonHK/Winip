@@ -348,6 +348,18 @@ void Renderer::Box(float x,float y,float w,float h,COLORREF color) {
     impl->brush->SetColor(impl->Color(color));
     impl->target->FillRectangle(D2D1::RectF(x,y,x+w,y+h),impl->brush.Get());
 }
+float Renderer::WrappedTextHeight(const std::wstring& text,float width,float size) {
+    if(text.empty() || width<=0)return 0;
+    auto layout=impl->layouts->Get(text,width,size,false,false,false,false,true);
+    DWRITE_TEXT_METRICS metrics{};layout->GetMetrics(&metrics);return metrics.height;
+}
+void Renderer::WrappedText(const std::wstring& text,float x,float y,float width,float size,COLORREF color) {
+    if(text.empty() || width<=0)return;
+    auto layout=impl->layouts->Get(text,width,size,false,false,false,false,true);
+    impl->brush->SetColor(impl->Color(color));
+    if(!impl->textRasters.Draw(impl->target.Get(),layout.Get(),impl->Color(color),x,y,impl->scale))
+        impl->target->DrawTextLayout(D2D1::Point2F(x,y),layout.Get(),impl->brush.Get());
+}
 float Renderer::MeasureText(const std::wstring& text,float width,float size,bool bold,bool extraBold) {
     auto layout=impl->layouts->Get(text,width,size,false,bold,true,extraBold);
     DWRITE_TEXT_METRICS metrics{};layout->GetMetrics(&metrics);return std::min(width,metrics.widthIncludingTrailingWhitespace);

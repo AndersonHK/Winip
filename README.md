@@ -6,13 +6,13 @@ execution in a dedicated desktop window, using your existing Python environment.
 The interface is written in C++ and rendered with Direct2D/DirectWrite on the GPU;
 it does not embed a browser or require a Jupyter web server.
 
-Winip is early-stage software. The current version is **0.2.2**.
+Winip is early-stage software. The current release is **0.3.3 — Windows x86-64**.
 
 ## Install and get started
 
 Installers are distributed separately from the source. The local release staging
 folder is [Dist/x64/Win](Dist/x64/Win/README.md); generated MSI files are not
-committed to Git. Until a release is published, build and package from source.
+committed to Git. If no binary release is available, build and package from source.
 Run the MSI, choose an installation folder, and optionally register Winip as an
 `.ipynb` handler. Installation requires administrator permission; running Winip
 does not. Packages are currently unsigned.
@@ -23,7 +23,10 @@ notebooks does not require Python. Opening a notebook never runs its cells.
 To execute code, select an existing 64-bit Python interpreter through
 **Kernel → Select interpreter**. That interpreter needs `ipykernel` and
 `jupyter_client`, plus any libraries imported by the notebook. Winip reports
-missing dependencies and does not install Python or packages for you. Run a cell
+missing dependencies and opens guided setup automatically, with destination
+confirmation. **Kernel → Connect kernel** or Run retries setup when needed. The
+MSI checks automatically and includes skippable guidance only for missing
+dependencies. A working kernel does not require pip. Run a cell
 with **Ctrl+Enter**, or run all code cells with **Ctrl+Shift+Enter**. Only run
 notebooks whose code you trust: execution has your account's file and network access.
 
@@ -54,7 +57,9 @@ and **Alt+Enter** toggles fullscreen. Double-click an image to toggle fit/full s
 
 **Ctrl+Shift+I** interrupts Python, **Ctrl+Shift+R** restarts it, and
 **Ctrl+Shift+.** force-stops it. A restart or force stop loses the kernel's state.
-Settings and kernel session files live under `%APPDATA%\Winip`; notebooks remain
+The inactive kernel status column also connects without running cells. Settings
+has its own menu between Widgets and Help; About identifies the running version
+and platform. Settings and kernel session files live under `%APPDATA%\Winip`; notebooks remain
 where you save them. See [Python and storage](Docs/Python-and-Storage.md) and the
 [full shortcut list](Docs/UI-Style-Guide.md#cell-editing-and-shortcuts).
 

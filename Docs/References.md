@@ -114,3 +114,29 @@ The [consolidated investigation](HDR-Capture-Investigation.md) records September
 - [Direct3D 11 multithreading](https://learn.microsoft.com/en-us/windows/win32/direct3d11/overviews-direct3d-11-render-multi-thread-intro) and [resource creation](https://learn.microsoft.com/en-us/windows/win32/direct3d11/overviews-direct3d-11-render-multi-thread-create): the loader uses thread-safe device resource creation with initial data; rendering/DXGI context operations stay on the render owner. Driver concurrency affects performance, so revisit on weaker/older adapters and during resource-pressure testing.
 - [DirectWrite word wrapping](https://learn.microsoft.com/en-us/windows/win32/api/dwrite/ne-dwrite-dwrite_word_wrapping): use the original `DWRITE_WORD_WRAPPING_WRAP` path, retaining shaping and wrapping long words. Later wrapping enum modes have newer OS requirements. Windows 7 runtime acceptance remains unverified.
 - Pretext was revisited for wrapping. Its separation of preparation and repeated layout informed immutable parsed content reuse; no Pretext code or character-width approximation was adopted. Native DirectWrite still shapes changed-width layouts. Revisit arithmetic reflow if measured long-prose resize work becomes the bottleneck.
+
+## Kernel setup (0.3.0)
+
+- [Python on Windows](https://docs.python.org/3/using/windows.html): official installation routes and per-user runtime ownership. The candidate downloads a stable signed x64 installer using the official release metadata, preserving existing PATH, associations and launchers.
+- [pip installation](https://pip.pypa.io/en/stable/installation/): `ensurepip` bootstraps pip when absent; it does not promise the latest online pip version.
+- [IPython kernel installation](https://ipython.readthedocs.io/en/stable/install/kernel_install.html): dependencies belong to the selected interpreter. Winip supplies its own explicit kernel specification, so setup does not register a global kernelspec.
+
+The implementation verifies SHA-256 and Authenticode before launching a downloaded
+installer. Revisit upstream metadata, OS ceilings and package compatibility when
+changing the supported Python range. Live Python installation through this UI and
+older-OS acceptance remain unverified.
+
+## Integrated setup sequence (0.3.1)
+
+- [Windows Installer custom-action sequencing](https://learn.microsoft.com/en-us/windows/win32/msi/sequencing-custom-actions): detection is a client UI action before the wizard; the guided continuation follows ExecuteAction.
+- [Windows Installer execution mutex](https://learn.microsoft.com/en-us/windows/win32/msi/-msiexecute-mutex): the execution mutex covers the execute sequence. External Python installers run in separate child processes after Winip commits; no second installation API is invoked in the MSI process.
+- [Restricted MSI package sessions](https://learn.microsoft.com/en-us/windows/win32/api/msi/nf-msi-msiopenpackageexw): read-only tests use an independent session to evaluate page conditions and the native property's detection results without installing anything.
+
+Sequencing and fixture checks do not establish interactive clean-machine setup or
+live external-installer acceptance.
+
+## Setup ownership and activation (0.3.2)
+
+- [Windows owned-window behavior](https://learn.microsoft.com/en-us/windows/win32/winmsg/window-features): ownership keeps the modal guide above its actual parent. The installer resolver must not assume the custom-action host owns the visible wizard.
+- [Dialog initialization and focus](https://learn.microsoft.com/en-us/windows/win32/dlgbox/dlgbox-programming-considerations): explicit control focus is separate from top-level activation; Winip performs the initial handoff after dialog creation.
+- [Foreground activation rules](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setforegroundwindow): the guide requests activation once and does not use permanent topmost state or repeat focus requests.

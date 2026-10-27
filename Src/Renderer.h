@@ -31,6 +31,8 @@ public:
     void Image(const std::shared_ptr<const NotebookImage>& image,float x,float y,float width,float height);
     void Box(float x, float y, float w, float h, COLORREF color);
     float MeasureText(const std::wstring& text, float width, float size, bool bold, bool extraBold=false);
+    float WrappedTextHeight(const std::wstring& text, float width, float size);
+    void WrappedText(const std::wstring& text, float x, float y, float width, float size, COLORREF color);
     float Text(const std::wstring& text, float x, float y, float w, float h,
               float size, COLORREF color, bool mono, bool bold, bool ellipsis = false, bool extraBold = false);
     void PushClip(float left, float top, float right, float bottom);

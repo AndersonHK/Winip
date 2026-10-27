@@ -1,18 +1,33 @@
 # Release identity
 
-Until publication to GitHub, use the project scheme **0.major.minor**:
+Use the project early-release scheme **0.major.minor**:
 
 - Increment `major` for substantial features or behavior changes, resetting `minor` to zero.
 - Increment `minor` for fixes and patches.
 - The leading zero marks the current early-stage release series; decide any version-policy change explicitly.
 
-The current release is **0.2.2**: responsive Markdown/images and eager open preparation. 0.2.1 added large-notebook open/save and visible error reporting fixes. The first MSI was 0.1.0; 0.2.0 added kernel lifecycle, image output and settings. `Winip-dev-24` identifies the historical validation build, not a separate product version.
+The current release is **0.3.3 — Windows x86-64**. It adds readiness detection,
+confirmed guided setup, retained kernel diagnostics, responsive status and menu
+controls, equal navigator margins, and explicit platform/version identification.
+See [Checkpoint 10](Checkpoint-10.md) for changes, evidence and limitations.
+
+The 0.3.0–0.3.2 packages were local validation iterations of this release. The
+previous public source baseline is 0.2.2, which added responsive Markdown/images
+and eager open preparation. Earlier checkpoints are indexed in [Docs/README](README.md).
+
+About identifies both the loaded product version and the build target. Windows
+x86-64 denotes the 64-bit x86 Windows build, not a platform-independent binary.
+Future Linux or macOS builds must identify their own operating system and CPU
+architecture. The target label does not change the numeric MSI/product version.
 
 Update [VERSION](../VERSION) and [ProductVersion.rc](../Src/ProductVersion.rc) together. The build script checks they agree. `package.py` uses VERSION by default and applies it to the MSI and native executable resources. Its `--version` override is for isolated upgrade fixtures; it does not silently advance repository release identity. MSI limits the fields to 255.255.65535.
 
 Keep the UpgradeCode fixed. `Scripts/versioning.py` derives a stable ProductCode from release version and architecture, so rebuilding the same version retains maintenance identity. A newer version gets a new ProductCode. Never distribute different release contents under an already released version: Repair restores that version's files and is not the delivery mechanism for unversioned changes. MSI PackageCode remains generated for the particular package build.
 
-During 0.2.2 validation the owner installed an unfinished local candidate and explicitly requested its replacement. The final package was recached with forced same-version file replacement using MSI `/fvamus`, followed by installed/payload hash and unchanged-settings verification. This local pre-release repair is recorded in [Checkpoint 09](Checkpoint-09.md); those hashes identify the historical package. The publication candidate is rebuilt with complete license notices and a path-independent debug reference; it remains an unpublished 0.2.2 candidate, not a repair/update for a public release. [Microsoft's REINSTALLMODE reference](https://learn.microsoft.com/en-us/windows/win32/msi/reinstallmode) documents forced replacement and recaching.
+Same-version repairs used during local pre-release testing are historical
+exceptions, not an update strategy for published packages. [Checkpoint 09](Checkpoint-09.md)
+records the earlier 0.2.2 recache, and Microsoft's [REINSTALLMODE reference](https://learn.microsoft.com/en-us/windows/win32/msi/reinstallmode)
+defines its semantics. After publishing 0.3.3, advance the version for changed binaries.
 
 Double-clicking the installed release's MSI offers Repair/Remove. A newer MSI detects the older product and offers Update using its installed directory and migrated feature state. The update installs its files before retiring the prior product registration, within the rollback transaction. Users do not need to uninstall first. This is a Windows Installer major-upgrade mechanism; it still internally removes superseded product registration. Stable component IDs, key paths and target locations are required for this scheduling policy.
 

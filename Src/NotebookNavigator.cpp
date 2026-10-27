@@ -15,8 +15,12 @@ NavigatorGeometry NotebookNavigator::Geometry(int width,int height,int documentH
     g.fitsMargin=g.x>=paperRight+3+8;
     const int page=std::max(22,height-232);
     g.maximum=std::max(0,documentHeight-page);
-    g.thumbHeight=g.maximum?std::min(g.height,std::max(40.f,g.height*page/std::max(1,documentHeight))):g.height;
-    g.thumbY=g.y+(g.maximum?(g.height-g.thumbHeight)*std::clamp(scroll,0,g.maximum)/g.maximum:0);
+    // Use the actual painted thumb bounds for both drawing and input. Equal
+    // insets keep its rounded caps concentric with the rail at either endpoint.
+    g.thumbInset=std::min(3.f,g.height/2);
+    const float trackHeight=std::max(0.f,g.height-2*g.thumbInset);
+    g.thumbHeight=g.maximum?std::min(trackHeight,std::max(36.f,trackHeight*page/std::max(1,documentHeight))):trackHeight;
+    g.thumbY=g.y+g.thumbInset+(g.maximum?(trackHeight-g.thumbHeight)*std::clamp(scroll,0,g.maximum)/g.maximum:0);
     return g;
 }
 bool NotebookNavigator::Hit(float x,float y,const NavigatorGeometry& g) {
@@ -28,8 +32,8 @@ void NotebookNavigator::Begin(float pointer,const NavigatorGeometry& g,uint64_t 
     Transition(1,now);
 }
 int NotebookNavigator::Drag(float pointer,const NavigatorGeometry& g) const {
-    const float travel=g.height-g.thumbHeight;
-    return travel>0?int(std::lround(std::clamp((pointer-offset-g.y)/travel,0.f,1.f)*g.maximum)):0;
+    const float travel=g.height-2*g.thumbInset-g.thumbHeight;
+    return travel>0?int(std::lround(std::clamp((pointer-offset-g.y-g.thumbInset)/travel,0.f,1.f)*g.maximum)):0;
 }
 void NotebookNavigator::End(uint64_t now) {held=false;Transition(0,now);}
 bool NotebookNavigator::Held() const{return held;}
@@ -45,7 +49,7 @@ float NotebookNavigator::Expansion(uint64_t now) const {
 }
 bool NotebookNavigator::Animating(uint64_t now) const {return from!=to && now-started<180;}
 void NotebookNavigator::Draw(Renderer& renderer,const Notebook& doc,const NavigatorGeometry& g,uint64_t now) const {
-    if(!g.maximum || g.height<=0 || (!Visible(g) && !Animating(now)))return;
+    if(!g.maximum || g.thumbHeight<=0 || (!Visible(g) && !Animating(now)))return;
     const float expansion=Expansion(now),focus=g.thumbY+g.thumbHeight/2;
     if(expansion>0) {
         renderer.PushClip(8,g.y-22,g.x+g.width+4,g.y+g.height+24);
@@ -93,5 +97,5 @@ void NotebookNavigator::Draw(Renderer& renderer,const Notebook& doc,const Naviga
     }
     renderer.RoundedBox(g.x,g.y,g.width,g.height,11,RGB(147,147,147),.8f);
     renderer.RoundedBox(g.x+2,g.y+2,g.width-4,g.height-4,9,RGB(255,255,255),.96f);
-    renderer.RoundedBox(g.x+3,g.thumbY+2,g.width-6,std::max(0.f,g.thumbHeight-4),8,held?RGB(153,153,153):RGB(187,187,187));
+    renderer.RoundedBox(g.x+g.thumbInset,g.thumbY,g.width-2*g.thumbInset,g.thumbHeight,8,held?RGB(153,153,153):RGB(187,187,187));
 }

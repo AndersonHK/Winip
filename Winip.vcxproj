@@ -151,7 +151,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ResourceCompile Include="$(WinipVersionResource)" />
+    <ResourceCompile Include="$(WinipVersionResource)" /><ResourceCompile Include="Src\PythonSetup.rc" />
     <ResourceCompile Include="Src\Winip.rc">
       <AdditionalIncludeDirectories>$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
@@ -163,7 +163,7 @@
   <Target Name="RequireX64" BeforeTargets="PrepareForBuild">
     <Error Condition="'$(Platform)' != 'x64'" Text="Winip is x64 only." />
   </Target>
-  <Target Name="CopyKernelBridge" AfterTargets="Build"><Copy SourceFiles="$(ProjectDir)Runtime\kernel_bridge.py" DestinationFolder="$(OutDir)runtime" SkipUnchangedFiles="true" /></Target>
+  <Target Name="CopyKernelBridge" AfterTargets="Build"><Copy SourceFiles="$(ProjectDir)Runtime\kernel_bridge.py;$(ProjectDir)Runtime\install_python.ps1" DestinationFolder="$(OutDir)runtime" SkipUnchangedFiles="true" /></Target>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <Target Name="CopyBundledFonts" AfterTargets="Build">
     <ItemGroup>
@@ -182,4 +182,8 @@
   </Target>
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+
+  <ItemGroup><ClCompile Include="Src\ChildProcess.cpp" /><ClCompile Include="Src\KernelFooter.cpp" /><ClCompile Include="Src\PythonSetup.cpp" /><ClInclude Include="Src\ChildProcess.h" /><ClInclude Include="Src\KernelFooter.h" /><ClInclude Include="Src\PythonSetup.h" /></ItemGroup>
+<ItemGroup><ClCompile Include="Src\TextEncoding.cpp" /><ClInclude Include="Src\TextEncoding.h" /><ClCompile Include="Src\PythonSetupPlan.cpp" /><ClInclude Include="Src\PythonSetupPlan.h" /></ItemGroup>
+<ItemGroup><ClCompile Include="Src\SetupWindowStyle.cpp" /><ClInclude Include="Src\SetupWindowStyle.h" /></ItemGroup>
 </Project>

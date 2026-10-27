@@ -2,9 +2,18 @@
 
 Unresolved investigation: [native HDR screenshot/snipping fidelity](HDR-Capture-Investigation.md). Vulkan presentation, 80-nit UI dimming and a replacement Print Screen handler did not meet acceptance. The experiment worktrees were removed; no candidate fix is shipped.
 
-The owner requested small, validated steps. This is the current sequence; it supersedes the [initial roadmap](Archive/Roadmap-initial.md). No dates or universal compatibility promises are implied. The full [Cantor parity target](Parity.md) remains active.
+Work proceeds in small, validated steps. This is the current sequence; it supersedes the [initial roadmap](Archive/Roadmap-initial.md). No dates or universal compatibility promises are implied. The full [Cantor parity target](Parity.md) remains active.
 
-Foundation completed in bounded host tests: GPU reader; responsive custom controls; title rename; interpreter discovery; synchronous resize composition; full-resolution GPU text reuse. See [the checkpoint index](README.md#current-state).
+Foundation completed in bounded host tests: GPU reader; responsive custom controls; title rename; interpreter discovery; synchronous resize composition; full-resolution GPU text reuse. See [the checkpoint index](README.md#historical-design-and-validation-summaries).
+
+## Implemented: release 0.3.3
+
+[Checkpoint 10](Checkpoint-10.md) adds dependency readiness checks, confirmed
+Python/pip/Jupyter setup, automatic MSI guidance, retained startup diagnostics,
+state-aware kernel controls and a combined kernel/version footer. It also provides
+owner/focus handling, a dedicated Settings menu, equal navigator endpoint insets
+and platform-aware About information. The [validation guide](Validation.md#release-033-checks)
+separates automated evidence from remaining interactive/platform acceptance.
 
 ## Implemented: large-notebook patch 0.2.1
 
@@ -27,7 +36,7 @@ Acceptance: edit the intended cell, navigate/insert without corrupting adjacent 
 
 [Checkpoint 05](Checkpoint-05.md) demonstrates `print("Hello, world!")`, persistent state, selected/all execution and output preservation. The requested animated vertical notebook navigator is implemented in [Checkpoint 06](Checkpoint-06.md). [Checkpoint 07](Checkpoint-07.md) implements real PNG/JPEG and static Matplotlib output, interpreter selection, cooperative interrupt/restart, settings, fresh per-document sessions and versioned MSI maintenance. Next: native tables, graph breadth, local import diagnostics and explicit parallel work, with the concrete [next-slice plan](Next-Slices.md); further execution ranges remain open.
 
-Launch/connect through the selected existing 64-bit Python. Verify required packages without silently installing them or choosing another interpreter. Show clear starting/idle/busy/disconnected/error state. Display the notebook immediately even when Python is unavailable.
+Launch/connect through the selected 64-bit Python, following [selection and setup rules](Python-and-Storage.md). Verify required packages and require explicit installation confirmation; preserve explicit, activated and terminal selections. Show clear starting/idle/busy/disconnected/error state. Display the notebook immediately even when Python is unavailable.
 
 Start with one code cell: correlate stdout/stderr, errors, results, completion and busy/idle transitions to the originating request/cell. Add deterministic execution ranges once that lifecycle works. Demonstrate shared state with one cell defining a variable and another using it; verify sys.executable matches the selected interpreter.
 
@@ -71,12 +80,17 @@ Explicit parallel execution remains later: independent tasks, input/output owner
 
 ## Advancing a checkpoint
 
-Record behavior, interfaces/ownership, relevant upstream decisions, passed tests, and limits. Use [Validation.md](Validation.md), preserve rendering invariants, update parity/status tables, and commit stable work. Numeric improvements never justify disabling live updates or reducing presentation fidelity. A documentation checkpoint does not imply that planned features were implemented.
+Record behavior, interfaces/ownership, relevant upstream decisions, passed tests, and limits. Use [Validation.md](Validation.md), preserve rendering invariants, update parity/status tables, and commit stable work when authorized. Numeric improvements never justify disabling live updates or reducing presentation fidelity. A documentation checkpoint does not imply that planned features were implemented.
 
 ## Implemented: 0.2.2 presentation and open preparation
 
 [Checkpoint 09](Checkpoint-09.md) adds wrapped rendered Markdown, embedded/attachment/relative PNG/JPEG images, default viewport fitting and double-click full-size scrolling. Source pixels, notebook JSON and live resize behavior are retained. The copied private-notebook benchmark includes all supported images before publication; worker-side GPU preparation avoids moving upload work into its first scroll. Further formats, full Markdown/math/tables, low-memory behavior and the complete frame deadline remain separate acceptance work.
 
-## Publication preparation (2026-10-16)
 
-Build outputs now live under `Out/`; the latest Windows x64 installer and checksum live under `Dist/x64/Win/`. Original work is MIT, with dependency/font/WiX exceptions retained in [third-party notices](../THIRD-PARTY-NOTICES.md). Public documentation and historical evidence are anonymized. This is packaging/documentation work; existing feature and runtime acceptance gaps remain. See [Publication.md](Publication.md).
+## Platform and publication boundaries
+
+The shipped build is Windows x86-64. Linux and macOS remain future targets; the
+current source/toolchain does not establish cross-compilation support. Keep OS
+and CPU architecture explicit in any future build identity. Source, generated
+installers and private validation evidence have separate publication boundaries
+under [Publication.md](Publication.md).

@@ -97,8 +97,8 @@ def main():
             manager = KernelManager(connection_file=str(Path(session)/'connection.json'),
                                     kernel_spec_manager=SelectedKernelSpecs())
             try:
-                manager.start_kernel(cwd=sys.argv[2], env=env, stdout=subprocess.DEVNULL,
-                                     stderr=subprocess.DEVNULL)
+                manager.start_kernel(cwd=sys.argv[2], env=env, stdout=sys.stderr,
+                                     stderr=sys.stderr)
                 client = manager.blocking_client()
                 client.start_channels(hb=False)
                 client.wait_for_ready(timeout=30)

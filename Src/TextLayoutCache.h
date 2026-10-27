@@ -15,9 +15,9 @@ public:
     TextLayoutCache(const TextLayoutCache&) = delete;
     TextLayoutCache& operator=(const TextLayoutCache&) = delete;
     // Shared layouts are immutable after publication. Changed inputs get a new layout.
-    Microsoft::WRL::ComPtr<IDWriteTextLayout> Get(const std::wstring& text,float width,float size,bool mono,bool bold,bool ellipsis, bool extraBold=false);
+    Microsoft::WRL::ComPtr<IDWriteTextLayout> Get(const std::wstring& text,float width,float size,bool mono,bool bold,bool ellipsis, bool extraBold=false,bool wrap=false);
 private:
-    using Key=std::tuple<std::wstring,float,float,bool,bool,bool,bool>;
+    using Key=std::tuple<std::wstring,float,float,bool,bool,bool,bool,bool>;
     struct Entry {Microsoft::WRL::ComPtr<IDWriteTextLayout> layout;uint64_t used=0;size_t cost=0;};
     Microsoft::WRL::ComPtr<IDWriteFactory> factory;
     Microsoft::WRL::ComPtr<IDWriteFontCollection> fonts;

@@ -4,7 +4,7 @@ class Renderer;
 class Notebook;
 
 struct NavigatorGeometry {
-    float x=0,y=0,width=22,height=0,thumbY=0,thumbHeight=0;
+    float x=0,y=0,width=22,height=0,thumbY=0,thumbHeight=0,thumbInset=3;
     int maximum=0,windowWidth=0;
     bool fitsMargin=false;
 };

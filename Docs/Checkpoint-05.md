@@ -6,7 +6,7 @@ The selected Python runs a real persistent ipykernel through a bundled bridge. C
 
 Toolbar: separate + Code and + Markdown buttons, Run, Run all where space permits, and a working selected-cell type dropdown. Cell-menu type changes are enabled. Ctrl+Shift+Enter runs all, Ctrl+Shift+K connects, Ctrl+Shift+. force-stops. Ctrl/Shift+Enter run code or render Markdown. Both #test and # test render headings. Cell overflow scrollbars are now draggable, including both ends, with capture-release handling.
 
-`KernelController`, `NotebookToolbar` and `CellScrollbar` have matching header/source pairs. The runtime bridge is an explicit ad-hoc/MSI payload; all app-owned mutable runtime files are under user state, and notebooks remain at their chosen locations. [Packaging review](Packaging.md#kernel-integration-review-checkpoint-05) records compiler cleanup and the distinction between an unelevated app and the current per-machine MSI.
+`KernelController`, `NotebookToolbar` and `CellScrollbar` have matching header/source pairs. The runtime bridge is an explicit ad-hoc/MSI payload; all app-owned mutable runtime files are under user state, and notebooks remain at their chosen locations. [Packaging review](Archive/Packaging-through-0.2.2.md#kernel-integration-review-checkpoint-05) records compiler cleanup and the distinction between an unelevated app and the current per-machine MSI.
 
 ## Validation
 

@@ -6,6 +6,8 @@
 #include <thread>
 #include <stdexcept>
 #include <filesystem>
+#include <fstream>
+#include <chrono>
 
 namespace {
 struct Handle {
@@ -47,6 +49,7 @@ struct KernelController::Impl {
         uint64_t generation=0;
     } request, configuration;
     std::string buffered;
+    std::filesystem::path diagnosticPath;
     void Publish(std::wstring status,uint64_t version,uint64_t id=0,Cell cell={}) {
         notify({std::move(status),version,id,std::move(cell)});
     }
@@ -54,7 +57,8 @@ struct KernelController::Impl {
         input.Reset();output.Reset();process.Reset();buffered.clear();connected=false;
         std::lock_guard<std::mutex> lock(mutex);interrupt.Reset();job.Reset();
     }
-    nlohmann::json Read() {
+    nlohmann::json Read(bool starting = false) {
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(45);
         for(;;) {
             auto end=buffered.find('\n');
             if(end!=std::string::npos) {
@@ -63,6 +67,15 @@ struct KernelController::Impl {
                 if(value.value("event","")=="interrupt_sent") {Publish(L"Kernel interrupting…",generation);continue;}
                 if(value.value("event","")=="error")throw std::runtime_error(value.value("message","Kernel failed"));
                 return value;
+            }
+            if (starting) {
+                DWORD available = 0;
+                Require(PeekNamedPipe(output.value,nullptr,0,nullptr,&available,nullptr)!=0,"Kernel bridge disconnected during startup");
+                if (!available) {
+                    Require(std::chrono::steady_clock::now()<deadline,"Kernel startup timed out after 45 seconds");
+                    Require(WaitForSingleObject(process.value,25)==WAIT_TIMEOUT,"Kernel bridge exited during startup");
+                    continue;
+                }
             }
             char bytes[16384];DWORD count=0;
             Require(ReadFile(output.value,bytes,sizeof(bytes),&count,nullptr) && count,"Kernel bridge disconnected");
@@ -79,6 +92,7 @@ struct KernelController::Impl {
         }
     }
     void Start(const Request& task) {
+        diagnosticPath.clear();
         {
             std::lock_guard<std::mutex> lock(mutex);
             job.Reset();job.value=CreateJobObjectW(nullptr,nullptr);
@@ -92,8 +106,10 @@ struct KernelController::Impl {
         Require(CreatePipe(&childInput.value,&input.value,&security,0)!=0,"Cannot create kernel input pipe");
         Require(CreatePipe(&output.value,&childOutput.value,&security,0)!=0,"Cannot create kernel output pipe");
         Require(SetHandleInformation(input.value,HANDLE_FLAG_INHERIT,0) && SetHandleInformation(output.value,HANDLE_FLAG_INHERIT,0),"Cannot protect kernel pipes");
-        errors.value=CreateFileW(L"NUL",GENERIC_WRITE,FILE_SHARE_READ|FILE_SHARE_WRITE,&security,OPEN_EXISTING,0,nullptr);
-        Require(errors.value!=INVALID_HANDLE_VALUE,"Cannot open kernel diagnostics sink");
+        std::filesystem::create_directories(task.runtime);
+        diagnosticPath=std::filesystem::path(task.runtime)/L"last-kernel-stderr.log";
+        errors.value=CreateFileW(diagnosticPath.c_str(),GENERIC_WRITE,FILE_SHARE_READ|FILE_SHARE_WRITE,&security,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);
+        Require(errors.value!=INVALID_HANDLE_VALUE,"Cannot open kernel diagnostics log");
         STARTUPINFOEXW start{};start.StartupInfo.cb=sizeof(start);
         start.StartupInfo.dwFlags=STARTF_USESTDHANDLES|STARTF_USESHOWWINDOW;
         start.StartupInfo.wShowWindow=SW_HIDE;
@@ -107,7 +123,7 @@ struct KernelController::Impl {
         Require(interrupt.value!=nullptr,"Cannot create interrupt event");
         HANDLE inherited[]={childInput.value,childOutput.value,errors.value,interrupt.value};
         Require(UpdateProcThreadAttribute(start.lpAttributeList,0,PROC_THREAD_ATTRIBUTE_HANDLE_LIST,inherited,sizeof(inherited),nullptr,nullptr)!=0,"Cannot restrict inherited kernel handles");
-        auto command=Quote(task.python)+L" -u -B "+Quote(task.bridge)+L" "+Quote(task.runtime)+L" "+Quote(task.cwd)+L" "+std::to_wstring(reinterpret_cast<uintptr_t>(interrupt.value));
+        auto command=Quote(task.python)+L" -X utf8 -u -B "+Quote(task.bridge)+L" "+Quote(task.runtime)+L" "+Quote(task.cwd)+L" "+std::to_wstring(reinterpret_cast<uintptr_t>(interrupt.value));
         PROCESS_INFORMATION child{};
         Require(CreateProcessW(task.python.c_str(),command.data(),nullptr,nullptr,TRUE,
             CREATE_NO_WINDOW|CREATE_SUSPENDED|EXTENDED_STARTUPINFO_PRESENT,nullptr,task.cwd.c_str(),&start.StartupInfo,&child)!=0,"Cannot launch selected Python");
@@ -120,7 +136,7 @@ struct KernelController::Impl {
             Require(ResumeThread(thread.value)!=static_cast<DWORD>(-1),"Cannot resume kernel bridge");
         }
         childInput.Reset();childOutput.Reset();errors.Reset();
-        auto ready=Read();Require(ready.value("event","")=="ready","Invalid kernel startup reply");
+        auto ready=Read(true);Require(ready.value("event","")=="ready","Invalid kernel startup reply");
         Require(Utf16(ready.at("executable").get<std::string>())==task.python,"Kernel interpreter identity mismatch");
         {std::lock_guard<std::mutex> lock(mutex);
             Require(generation==task.generation,"Kernel start cancelled");
@@ -157,10 +173,27 @@ struct KernelController::Impl {
                 {std::lock_guard<std::mutex> lock(mutex);queued=pending;busy=queued;running=false;}
                 if(!queued)Publish(generation==task.generation?L"Kernel idle":L"Kernel stopped",generation);
             } catch(const std::exception& error) {
+                const bool startupFailure = !connected;
                 TerminateJobObject(job.value,1);Close();
+                std::wstring detail = Utf16(error.what());
+                if (!diagnosticPath.empty()) {
+                    std::ifstream diagnostic(diagnosticPath,std::ios::binary | std::ios::ate);
+                    if (diagnostic) {
+                        const auto size=diagnostic.tellg();
+                        diagnostic.seekg(std::max<std::streamoff>(0,static_cast<std::streamoff>(size)-65536));
+                        std::string tail((std::istreambuf_iterator<char>(diagnostic)),std::istreambuf_iterator<char>());
+                        if (!tail.empty()) {
+                            try { detail += L"\n\n" + Utf16(tail); }
+                            catch (...) { detail += L"\nDiagnostic log contains non-UTF-8 text: " + diagnosticPath.wstring(); }
+                        }
+                    }
+                }
                 bool queued;
                 {std::lock_guard<std::mutex> lock(mutex);queued=pending;busy=queued;running=false;}
-                if(!queued)Publish(generation==task.generation?L"Kernel error: "+Utf16(error.what()):L"Kernel stopped",generation);
+                if(!queued) {
+                    if(generation==task.generation)notify({L"Kernel error: "+detail,generation,0,{},true,startupFailure});
+                    else Publish(L"Kernel stopped",generation);
+                }
             }
         }
         Close();
@@ -207,7 +240,7 @@ bool KernelController::Interrupt() {
 }
 bool KernelController::Restart() {
     std::lock_guard<std::mutex> lock(impl->mutex);
-    if(impl->configuration.python.empty())return false;
+    if(impl->configuration.python.empty() || !impl->connected)return false;
     ++impl->generation;impl->connected=false;impl->interrupted=false;
     TerminateJobObject(impl->job.value,1);
     impl->request=impl->configuration;impl->request.generation=impl->generation;
