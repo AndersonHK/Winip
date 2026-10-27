@@ -10,7 +10,7 @@ Winip is early-stage software. The current release is **0.3.3 — Windows x86-64
 
 ## Install and get started
 
-Installers are distributed separately from the source. The local release staging
+Installers are distributed through [GitHub Releases](https://github.com/AndersonHK/Winip/releases), separately from the source. The local release staging
 folder is [Dist/x64/Win](Dist/x64/Win/README.md); generated MSI files are not
 committed to Git. If no binary release is available, build and package from source.
 Run the MSI, choose an installation folder, and optionally register Winip as an

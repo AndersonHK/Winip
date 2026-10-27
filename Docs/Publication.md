@@ -59,9 +59,38 @@ size/hash/reason manifest before retiring old distribution files. Preserve usefu
 upgrade-comparison installers under `Out/Packaging/` and lightweight reports under
 `Artifacts/`; do not add those files to Git.
 
-A source commit/push is distinct from uploading GitHub release assets. Report each
-operation separately and verify the remote branch after pushing. Only create or
-publish a hosted release when that action is requested.
+A new Winip release must also be officially published through **GitHub Releases**.
+A source commit, branch push or Git tag alone does not complete a release. Normal
+development commits do not require a release; an instruction to publish a new
+release includes this step. Report source publication and asset publication
+separately and verify both.
+
+## Official GitHub release workflow
+
+Use the repository's [New release page](https://github.com/AndersonHK/Winip/releases/new)
+or GitHub's [official Releases API](https://docs.github.com/en/rest/releases/releases).
+Both create the same standard GitHub Release; attaching binaries to source commits
+or issues is not a substitute.
+
+1. Complete validation and documentation, commit the release source and push the
+   public branch. Record the exact commit SHA; do not target a moving branch by
+   assumption or include local-only archive ancestry.
+2. Create a draft release with tag `v<VERSION>` at that commit. Include the version,
+   OS and architecture in the title, for example `Winip 0.3.3 — Windows x86-64`.
+   If a tag already exists, verify its target rather than moving it silently.
+3. Write concise notes covering changes, installation requirements, validation
+   and material limitations. Mark previews as prereleases; ordinary releases use
+   the normal published-release state.
+4. Attach the validated MSI and `SHA256SUMS.txt` from `Dist/x64/Win/` as release
+   assets. Verify asset names, sizes and SHA-256 values before publishing. Keep
+   binaries and raw validation reports out of Git.
+5. Publish the release, then verify its public page, tag target and downloadable
+   assets. For the current ordinary release, confirm GitHub marks it as latest.
+   Retain a lightweight local publication receipt and report the release URL.
+
+After publication, use a new version for changed binaries. Do not silently replace
+published assets or move a release tag. Future Linux/macOS builds follow the same
+workflow with explicitly named OS/architecture assets and matching checksums.
 
 ## Public history and local archive
 

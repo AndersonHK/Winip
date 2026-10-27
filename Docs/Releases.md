@@ -36,3 +36,7 @@ Read-only checks compare the old and new MSI component identities and verify mai
 ## Distribution artifacts
 
 Keep only source, assets, guides and concise reviewed validation summaries in Git. Build/install results, raw test reports and intermediary compiler files stay ignored. `Dist/x64/Win/` holds the latest locally built MSI and checksum for upload as release assets; only its guide is tracked. Use a new version for changes after a public release.
+
+Every new release must have an official GitHub Release with a `v<VERSION>` tag,
+release notes and verified platform-specific assets. A commit/push alone is not
+release publication. Follow the [GitHub release workflow](Publication.md#official-github-release-workflow).

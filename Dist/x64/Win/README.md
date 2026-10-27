@@ -6,7 +6,9 @@ The MSI checks Python/kernel readiness automatically and offers skippable setup
 with explicit destination confirmation. A working kernel does not require pip.
 
 Only this guide is tracked in Git. The MSI and `SHA256SUMS.txt` are generated release
-assets, distributed separately from source. If assets are not available, build
+assets, published through [GitHub Releases](https://github.com/AndersonHK/Winip/releases)
+using the [official release workflow](../../../Docs/Publication.md#official-github-release-workflow).
+If assets are not available, build
 from the repository. The installer needs administrator permission and is unsigned.
 
 Verify the local package from the repository root:
